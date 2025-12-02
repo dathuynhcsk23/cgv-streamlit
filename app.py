@@ -655,36 +655,47 @@ def check_demo_data_exists():
     return False
 
 
-def get_demo_account_spending():
-    """Get current spending of demo account."""
-    result = execute_query(
-        "SELECT TongChiTieuLuyKe FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
+def delete_demo_data():
+    """Delete all demo data."""
+    execute_query("DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False)
+    execute_query(
+        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?", (DEMO_TRANSACTION_ID,), fetch=False
+    )
+    execute_query(
+        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
+        (DEMO_ACCOUNT_ID,),
+        fetch=False,
+    )
+    execute_query(
+        "DELETE FROM KhachHang WHERE MaKhachHang = ?", (DEMO_CUSTOMER_ID,), fetch=False
+    )
+
+
+def get_demo_account_data():
+    """Get demo account data as DataFrame."""
+    return execute_query(
+        """SELECT MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, TongChiTieuLuyKe 
+           FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?""",
         (DEMO_ACCOUNT_ID,),
     )
-    if result is not None and not result.empty:
-        return result.iloc[0]["TongChiTieuLuyKe"]
-    return None
 
 
-def get_demo_transaction_status():
-    """Get current status of demo transaction."""
-    result = execute_query(
-        "SELECT TrangThai FROM GiaoDich WHERE MaGiaoDich = ?", (DEMO_TRANSACTION_ID,)
-    )
-    if result is not None and not result.empty:
-        return result.iloc[0]["TrangThai"]
-    return None
-
-
-def get_demo_ticket_value():
-    """Get ticket value of demo transaction."""
-    result = execute_query(
-        "SELECT SUM(GiaSauUuDai) as Total FROM Ve WHERE MaGiaoDich = ?",
+def get_demo_transaction_data():
+    """Get demo transaction data as DataFrame."""
+    return execute_query(
+        """SELECT MaGiaoDich, MaKhachHang, TrangThai, KenhThanhToan, PhuongThuc 
+           FROM GiaoDich WHERE MaGiaoDich = ?""",
         (DEMO_TRANSACTION_ID,),
     )
-    if result is not None and not result.empty:
-        return result.iloc[0]["Total"]
-    return None
+
+
+def get_demo_ticket_data():
+    """Get demo ticket data as DataFrame."""
+    return execute_query(
+        """SELECT MaVe, MaGiaoDich, MaGhe, TrangThai, GiaChuan, GiaSauUuDai 
+           FROM Ve WHERE MaVe = ?""",
+        (DEMO_TICKET_ID,),
+    )
 
 
 def page_trigger_demo():
@@ -693,7 +704,7 @@ def page_trigger_demo():
     st.info("""
     Trang này dùng để minh họa hoạt động của 2 trigger trong database:
     
-    1. **trg_UpdateTongChiTieuLuyKe**: Tự động cập nhật tổng chi tiêu lũy kế khi trạng thái thanh toán thay đổi thành "Đã thanh toán"
+    1. **trg_UpdateTongChiTieuLuyKe**: Tự động cập nhật tổng chi tiêu lũy kế khi trạng thái thanh toán thay đổi
     2. **trg_CheckTuoiXemPhim**: Kiểm tra tuổi - ngăn mua vé nếu khách hàng chưa đủ tuổi xem phim
     """)
 
@@ -709,72 +720,34 @@ def page_trigger_demo():
         """)
 
         st.divider()
-        st.subheader("🧪 Demo Tương Tác")
-
-        # Initialize session state for demo
-        if "demo_initialized" not in st.session_state:
-            st.session_state.demo_initialized = False
 
         # Check current state
         demo_exists = check_demo_data_exists()
 
-        # --- STEP 0: Setup Demo Data ---
-        st.markdown("### Bước 0: Khởi tạo dữ liệu demo")
+        # =================================================================
+        # STEP 1: CREATE DEMO DATA
+        # =================================================================
+        st.markdown("### 🔧 Bước 1: Tạo dữ liệu demo")
 
         if demo_exists:
-            st.success("✅ Dữ liệu demo đã tồn tại trong database")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("🔄 Reset Demo Data", key="reset_demo"):
-                    # Delete and recreate
-                    execute_query(
-                        "DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False
-                    )
-                    execute_query(
-                        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?",
-                        (DEMO_TRANSACTION_ID,),
-                        fetch=False,
-                    )
-                    execute_query(
-                        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
-                        (DEMO_ACCOUNT_ID,),
-                        fetch=False,
-                    )
-                    execute_query(
-                        "DELETE FROM KhachHang WHERE MaKhachHang = ?",
-                        (DEMO_CUSTOMER_ID,),
-                        fetch=False,
-                    )
-                    st.session_state.demo_initialized = False
-                    st.rerun()
-            with col2:
-                if st.button("🗑️ Xóa Demo Data", key="delete_demo", type="secondary"):
-                    execute_query(
-                        "DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False
-                    )
-                    execute_query(
-                        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?",
-                        (DEMO_TRANSACTION_ID,),
-                        fetch=False,
-                    )
-                    execute_query(
-                        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
-                        (DEMO_ACCOUNT_ID,),
-                        fetch=False,
-                    )
-                    execute_query(
-                        "DELETE FROM KhachHang WHERE MaKhachHang = ?",
-                        (DEMO_CUSTOMER_ID,),
-                        fetch=False,
-                    )
-                    st.success("✅ Đã xóa dữ liệu demo")
-                    st.session_state.demo_initialized = False
-                    st.rerun()
+            st.success(
+                "✅ Dữ liệu demo đã tồn tại. Chuyển sang Bước 2 để thực hiện demo, hoặc xóa dữ liệu ở Bước 3 để tạo lại."
+            )
         else:
-            st.warning("⚠️ Chưa có dữ liệu demo. Nhấn nút bên dưới để tạo.")
+            st.markdown("""
+            Nhấn nút bên dưới để tạo dữ liệu demo. Các bản ghi sau sẽ được **INSERT** vào database:
+            
+            | Bảng | Mô tả dữ liệu |
+            |:-----|:--------------|
+            | `KhachHang` | 1 khách hàng mới (MaKhachHang = `KH_DEMO_01`) |
+            | `TaiKhoanThanhVien` | 1 tài khoản thành viên với **TongChiTieuLuyKe = 0** |
+            | `GiaoDich` | 1 giao dịch với trạng thái **'Tạm giữ'** (chưa thanh toán) |
+            | `Ve` | 1 vé với giá **150,000 VNĐ** |
+            """)
 
-            if st.button("🚀 Tạo Dữ Liệu Demo", type="primary", key="create_demo"):
+            if st.button(
+                "🚀 INSERT dữ liệu demo vào database", type="primary", key="create_demo"
+            ):
                 try:
                     # Get first available showtime for demo
                     showtime = execute_query("""
@@ -842,150 +815,170 @@ def page_trigger_demo():
                             fetch=False,
                         )
 
-                        st.success("✅ Đã tạo dữ liệu demo thành công!")
-                        st.session_state.demo_initialized = True
+                        st.success("✅ Đã INSERT dữ liệu demo thành công!")
                         st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ Lỗi khi tạo dữ liệu demo: {e}")
 
-        # Only show the rest if demo data exists
+        # =================================================================
+        # STEP 2: DEMO THE TRIGGER (only if demo data exists)
+        # =================================================================
         if demo_exists:
             st.divider()
+            st.markdown("### 🧪 Bước 2: Demo Trigger")
 
-            # --- Current State Display ---
-            st.markdown("### 📊 Trạng Thái Hiện Tại")
+            # --- Query buttons ---
+            st.markdown("#### 🔍 Truy vấn dữ liệu hiện tại")
+            st.markdown(
+                "Nhấn các nút bên dưới để thực hiện `SELECT` và xem dữ liệu thực tế từ database:"
+            )
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                if st.button(
+                    "📋 SELECT TaiKhoanThanhVien",
+                    key="query_account",
+                    use_container_width=True,
+                ):
+                    st.session_state.show_account = True
+            with col2:
+                if st.button(
+                    "📋 SELECT GiaoDich",
+                    key="query_transaction",
+                    use_container_width=True,
+                ):
+                    st.session_state.show_transaction = True
+            with col3:
+                if st.button(
+                    "📋 SELECT Ve", key="query_ticket", use_container_width=True
+                ):
+                    st.session_state.show_ticket = True
+
+            # Display query results
+            if st.session_state.get("show_account", False):
+                st.markdown(
+                    "**Bảng `TaiKhoanThanhVien`** (chú ý cột `TongChiTieuLuyKe`):"
+                )
+                account_df = get_demo_account_data()
+                if account_df is not None and not account_df.empty:
+                    st.dataframe(account_df, use_container_width=True, hide_index=True)
+
+            if st.session_state.get("show_transaction", False):
+                st.markdown("**Bảng `GiaoDich`** (chú ý cột `TrangThai`):")
+                transaction_df = get_demo_transaction_data()
+                if transaction_df is not None and not transaction_df.empty:
+                    st.dataframe(
+                        transaction_df, use_container_width=True, hide_index=True
+                    )
+
+            if st.session_state.get("show_ticket", False):
+                st.markdown("**Bảng `Ve`** (chú ý cột `GiaSauUuDai`):")
+                ticket_df = get_demo_ticket_data()
+                if ticket_df is not None and not ticket_df.empty:
+                    st.dataframe(ticket_df, use_container_width=True, hide_index=True)
+
+            st.markdown("---")
+
+            # --- UPDATE buttons ---
+            st.markdown("#### ⚡ Thực hiện UPDATE để kích hoạt Trigger")
+
+            # Get current transaction status
+            transaction_df = get_demo_transaction_data()
+            current_status = (
+                transaction_df.iloc[0]["TrangThai"]
+                if transaction_df is not None and not transaction_df.empty
+                else None
+            )
 
             col1, col2 = st.columns(2)
 
             with col1:
-                if st.button(
-                    "🔍 Kiểm tra trạng thái",
-                    key="check_state",
-                    use_container_width=True,
-                ):
-                    st.session_state.show_state = True
-
-            if st.session_state.get("show_state", True):
-                current_spending = get_demo_account_spending()
-                current_status = get_demo_transaction_status()
-                ticket_value = get_demo_ticket_value()
-
-                st.markdown(f"""
-                | Thông tin | Giá trị |
-                |:---|:---|
-                | 👤 **Khách hàng** | `{DEMO_CUSTOMER_ID}` - Demo User |
-                | 💳 **Tài khoản** | `{DEMO_ACCOUNT_ID}` |
-                | 💰 **Tổng chi tiêu lũy kế** | **{format_currency(current_spending) if current_spending is not None else "N/A"}** |
-                | 📝 **Mã giao dịch** | `{DEMO_TRANSACTION_ID}` |
-                | 📊 **Trạng thái giao dịch** | **{current_status or "N/A"}** |
-                | 🎫 **Giá trị vé** | {format_currency(ticket_value) if ticket_value is not None else "N/A"} |
+                st.markdown("""
+                **Thanh toán giao dịch:**
+                ```sql
+                UPDATE GiaoDich 
+                SET TrangThai = N'Đã thanh toán' 
+                WHERE MaGiaoDich = 'GD_DEMO01'
+                ```
+                *Kỳ vọng: Trigger sẽ **cộng** 150,000 VNĐ vào `TongChiTieuLuyKe`*
                 """)
+                if current_status == "Tạm giữ":
+                    if st.button(
+                        "▶️ Chạy UPDATE (Thanh toán)",
+                        type="primary",
+                        key="confirm_payment",
+                    ):
+                        execute_query(
+                            "UPDATE GiaoDich SET TrangThai = N'Đã thanh toán' WHERE MaGiaoDich = ?",
+                            (DEMO_TRANSACTION_ID,),
+                            fetch=False,
+                        )
+                        st.success("✅ UPDATE thành công! Trigger đã được kích hoạt.")
+                        st.session_state.show_account = True
+                        st.session_state.show_transaction = True
+                        st.rerun()
+                elif current_status == "Đã thanh toán":
+                    st.info("ℹ️ Giao dịch đã ở trạng thái 'Đã thanh toán'")
+                else:
+                    st.warning(f"⚠️ Trạng thái hiện tại: {current_status}")
 
+            with col2:
+                st.markdown("""
+                **Hủy giao dịch (hoàn tiền):**
+                ```sql
+                UPDATE GiaoDich 
+                SET TrangThai = N'Hủy' 
+                WHERE MaGiaoDich = 'GD_DEMO01'
+                ```
+                *Kỳ vọng: Trigger sẽ **trừ** 150,000 VNĐ khỏi `TongChiTieuLuyKe`*
+                """)
+                if current_status == "Đã thanh toán":
+                    if st.button(
+                        "▶️ Chạy UPDATE (Hủy)", type="secondary", key="cancel_payment"
+                    ):
+                        execute_query(
+                            "UPDATE GiaoDich SET TrangThai = N'Hủy' WHERE MaGiaoDich = ?",
+                            (DEMO_TRANSACTION_ID,),
+                            fetch=False,
+                        )
+                        st.success("✅ UPDATE thành công! Trigger đã được kích hoạt.")
+                        st.session_state.show_account = True
+                        st.session_state.show_transaction = True
+                        st.rerun()
+                elif current_status == "Hủy":
+                    st.info("ℹ️ Giao dịch đã bị hủy")
+                else:
+                    st.info("ℹ️ Cần thanh toán trước mới có thể hủy")
+
+            # =================================================================
+            # STEP 3: CLEANUP
+            # =================================================================
             st.divider()
+            st.markdown("### 🗑️ Bước 3: Xóa dữ liệu demo")
 
-            # --- STEP 1: Confirm Payment ---
-            st.markdown("### Bước 1: Xác nhận thanh toán")
             st.markdown("""
-            Khi nhấn nút này, trạng thái giao dịch sẽ chuyển từ `Tạm giữ` → `Đã thanh toán`.
-            
-            **Kỳ vọng:** Trigger sẽ tự động **cộng** 150,000 VNĐ vào `TongChiTieuLuyKe`.
+            Sau khi demo xong, nhấn nút bên dưới để **DELETE** tất cả dữ liệu demo khỏi database.
+            Nếu muốn demo lại, hãy quay lại Bước 1 để tạo dữ liệu mới.
             """)
 
-            current_status = get_demo_transaction_status()
+            if st.button("🗑️ DELETE dữ liệu demo", type="secondary", key="delete_demo"):
+                delete_demo_data()
+                # Clear session state
+                st.session_state.show_account = False
+                st.session_state.show_transaction = False
+                st.session_state.show_ticket = False
+                st.success("✅ Đã DELETE tất cả dữ liệu demo")
+                st.rerun()
 
-            if current_status == "Tạm giữ":
-                if st.button(
-                    "✅ Xác nhận thanh toán", type="primary", key="confirm_payment"
-                ):
-                    execute_query(
-                        """
-                        UPDATE GiaoDich SET TrangThai = N'Đã thanh toán' WHERE MaGiaoDich = ?
-                    """,
-                        (DEMO_TRANSACTION_ID,),
-                        fetch=False,
-                    )
-                    st.success("✅ Đã cập nhật trạng thái thành 'Đã thanh toán'")
-                    st.info(
-                        "🔥 **Trigger đã được kích hoạt!** Nhấn 'Kiểm tra trạng thái' để xem kết quả."
-                    )
-                    st.session_state.show_state = True
-                    st.rerun()
-            elif current_status == "Đã thanh toán":
-                st.success("✅ Giao dịch đã được thanh toán")
-            else:
-                st.warning(f"⚠️ Trạng thái hiện tại: {current_status}")
-
-            st.divider()
-
-            # --- STEP 2: Cancel/Refund ---
-            st.markdown("### Bước 2: Hủy giao dịch (Hoàn tiền)")
-            st.markdown("""
-            Khi nhấn nút này, trạng thái giao dịch sẽ chuyển từ `Đã thanh toán` → `Hủy`.
-            
-            **Kỳ vọng:** Trigger sẽ tự động **trừ** 150,000 VNĐ khỏi `TongChiTieuLuyKe`.
-            """)
-
-            if current_status == "Đã thanh toán":
-                if st.button(
-                    "❌ Hủy giao dịch", type="secondary", key="cancel_payment"
-                ):
-                    execute_query(
-                        """
-                        UPDATE GiaoDich SET TrangThai = N'Hủy' WHERE MaGiaoDich = ?
-                    """,
-                        (DEMO_TRANSACTION_ID,),
-                        fetch=False,
-                    )
-                    st.success("✅ Đã cập nhật trạng thái thành 'Hủy'")
-                    st.info(
-                        "🔥 **Trigger đã được kích hoạt!** Nhấn 'Kiểm tra trạng thái' để xem kết quả."
-                    )
-                    st.session_state.show_state = True
-                    st.rerun()
-            elif current_status == "Hủy":
-                st.info("ℹ️ Giao dịch đã bị hủy")
-            elif current_status == "Tạm giữ":
-                st.info("ℹ️ Giao dịch chưa được thanh toán, không thể hủy hoàn tiền")
-
-            st.divider()
-
-            # --- STEP 3: Restore to pending ---
-            st.markdown("### Bước 3: Khôi phục về trạng thái chờ (Reset demo)")
-            st.markdown("""
-            Đưa giao dịch về trạng thái `Tạm giữ` để có thể demo lại từ đầu.
-            
-            **Lưu ý:** Thao tác này **không** kích hoạt trigger (vì không liên quan đến `Đã thanh toán`).
-            """)
-
-            if current_status != "Tạm giữ":
-                if st.button("🔄 Khôi phục về 'Tạm giữ'", key="restore_pending"):
-                    # Reset spending to 0 manually since we're just resetting demo
-                    execute_query(
-                        """
-                        UPDATE TaiKhoanThanhVien SET TongChiTieuLuyKe = 0 WHERE MaTaiKhoan = ?
-                    """,
-                        (DEMO_ACCOUNT_ID,),
-                        fetch=False,
-                    )
-                    execute_query(
-                        """
-                        UPDATE GiaoDich SET TrangThai = N'Tạm giữ' WHERE MaGiaoDich = ?
-                    """,
-                        (DEMO_TRANSACTION_ID,),
-                        fetch=False,
-                    )
-                    st.success("✅ Đã khôi phục về trạng thái ban đầu")
-                    st.rerun()
-            else:
-                st.info("ℹ️ Giao dịch đang ở trạng thái 'Tạm giữ'")
-
-            st.divider()
-
-            # --- SQL Code Reference ---
-            with st.expander("📝 Xem mã SQL của Trigger"):
-                st.code(
-                    """
+        # =================================================================
+        # SQL CODE REFERENCE
+        # =================================================================
+        st.divider()
+        with st.expander("📝 Xem mã SQL của Trigger"):
+            st.code(
+                """
 CREATE TRIGGER trg_UpdateTongChiTieuLuyKe
 ON GiaoDich
 AFTER UPDATE
@@ -1031,9 +1024,9 @@ BEGIN
         GROUP BY MaTaiKhoan
     ) AS adj ON tk.MaTaiKhoan = adj.MaTaiKhoan;
 END
-                """,
-                    language="sql",
-                )
+            """,
+                language="sql",
+            )
 
     with tab2:
         st.subheader("Trigger: trg_CheckTuoiXemPhim")
@@ -1041,45 +1034,496 @@ END
         st.markdown("""
         **Mô tả:** Trigger này được kích hoạt khi INSERT hoặc UPDATE bảng `Ve`. 
         Nó kiểm tra xem khách hàng thành viên có đủ tuổi để xem phim không.
-        Nếu không đủ tuổi, giao dịch sẽ bị hủy (ROLLBACK).
+        Nếu không đủ tuổi, giao dịch sẽ bị **ROLLBACK** (hủy toàn bộ transaction).
         """)
 
-        # Show movies with age restrictions
-        st.write("**Danh sách phim và giới hạn độ tuổi:**")
-        movies = execute_query("""
-            SELECT MaPhim, TuaDe, GioiHanDoTuoi, TrangThaiPhatHanh
-            FROM Phim
-            WHERE TrangThaiPhatHanh IN (N'Đang chiếu', N'Sắp chiếu')
-            ORDER BY GioiHanDoTuoi DESC
-        """)
+        st.divider()
 
-        if movies is not None and not movies.empty:
-            movies.columns = ["Mã Phim", "Tựa Đề", "Giới Hạn Tuổi", "Trạng Thái"]
-            st.dataframe(movies, use_container_width=True, hide_index=True)
+        # Demo constants for age check trigger
+        # Constraints: MaPhim=CHAR(10), MaRap=CHAR(5), MaKhachHang=CHAR(11), MaTaiKhoan=CHAR(12), MaGiaoDich=CHAR(9)
+        AGE_DEMO_MOVIE_ID = "PHIM_AGE01"  # 10 chars
+        AGE_DEMO_RAP_ID = "RAPAG"  # 5 chars
+        AGE_DEMO_ADULT_KH = "KH_ADULT_01"  # 11 chars
+        AGE_DEMO_ADULT_TK = "TK_ADULT_001"  # 12 chars
+        AGE_DEMO_MINOR_KH = "KH_MINOR_01"  # 11 chars
+        AGE_DEMO_MINOR_TK = "TK_MINOR_001"  # 12 chars
 
-        st.markdown("""
-        **Cách hoạt động:**
-        ```sql
-        -- Khi INSERT INTO Ve
-        -- Trigger kiểm tra:
-        IF EXISTS (
-            SELECT 1 FROM inserted i
-            JOIN GiaoDich gd ON i.MaGiaoDich = gd.MaGiaoDich
-            JOIN Phim p ON i.MaPhim = p.MaPhim
-            JOIN TaiKhoanThanhVien tk ON gd.MaKhachHang = tk.MaKhachHang
-            WHERE DATEADD(YEAR, p.GioiHanDoTuoi, tk.NgaySinh) > sc.NgayChieu
-        )
-        BEGIN
-            RAISERROR('Khách hàng không đủ tuổi xem phim!', 16, 1);
-            ROLLBACK TRANSACTION;
-        END
-        ```
-        """)
+        def check_age_demo_exists():
+            result = execute_query(
+                "SELECT COUNT(*) as cnt FROM Phim WHERE MaPhim = ?",
+                (AGE_DEMO_MOVIE_ID,),
+            )
+            if result is not None and not result.empty:
+                return result.iloc[0]["cnt"] > 0
+            return False
 
-        st.warning("""
-        ⚠️ **Lưu ý:** Để demo trigger này, bạn cần thực hiện INSERT vé với khách hàng 
-        thành viên có ngày sinh không thỏa mãn điều kiện tuổi của phim.
-        """)
+        def delete_age_demo_data():
+            # Delete in reverse order of dependencies
+            execute_query(
+                "DELETE FROM Ve WHERE MaPhim = ?", (AGE_DEMO_MOVIE_ID,), fetch=False
+            )
+            execute_query(
+                "DELETE FROM GiaoDich WHERE MaKhachHang IN (?, ?)",
+                (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                fetch=False,
+            )
+            execute_query(
+                "DELETE FROM SuatChieu WHERE MaPhim = ?",
+                (AGE_DEMO_MOVIE_ID,),
+                fetch=False,
+            )
+            execute_query(
+                "DELETE FROM Ghe WHERE MaRap = ?", (AGE_DEMO_RAP_ID,), fetch=False
+            )
+            execute_query(
+                "DELETE FROM PhongChieu WHERE MaRap = ?",
+                (AGE_DEMO_RAP_ID,),
+                fetch=False,
+            )
+            execute_query(
+                "DELETE FROM Phim WHERE MaPhim = ?", (AGE_DEMO_MOVIE_ID,), fetch=False
+            )
+            execute_query(
+                "DELETE FROM RapChieuPhim WHERE MaRap = ?",
+                (AGE_DEMO_RAP_ID,),
+                fetch=False,
+            )
+            execute_query(
+                "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan IN (?, ?)",
+                (AGE_DEMO_ADULT_TK, AGE_DEMO_MINOR_TK),
+                fetch=False,
+            )
+            execute_query(
+                "DELETE FROM KhachHang WHERE MaKhachHang IN (?, ?)",
+                (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                fetch=False,
+            )
+
+        age_demo_exists = check_age_demo_exists()
+
+        # =================================================================
+        # STEP 1: CREATE DEMO DATA
+        # =================================================================
+        st.markdown("### 🔧 Bước 1: Tạo dữ liệu demo")
+
+        if age_demo_exists:
+            st.success(
+                "✅ Dữ liệu demo đã tồn tại. Chuyển sang Bước 2 để thực hiện demo, hoặc xóa dữ liệu ở Bước 3 để tạo lại."
+            )
+        else:
+            st.markdown("""
+            Nhấn nút bên dưới để tạo dữ liệu demo. Các bản ghi sau sẽ được **INSERT** vào database:
+            
+            | Bảng | Mô tả dữ liệu |
+            |:-----|:--------------|
+            | `Phim` | 1 phim **T18** (giới hạn 18 tuổi) |
+            | `RapChieuPhim` | 1 rạp chiếu demo |
+            | `PhongChieu` | 1 phòng chiếu |
+            | `Ghe` | 2 ghế (A1, A2) |
+            | `SuatChieu` | 1 suất chiếu vào ngày mai |
+            | `KhachHang` | 2 khách hàng: 1 người lớn (35 tuổi) và 1 trẻ vị thành niên (15 tuổi) |
+            | `TaiKhoanThanhVien` | 2 tài khoản thành viên với ngày sinh tương ứng |
+            """)
+
+            if st.button(
+                "🚀 INSERT dữ liệu demo vào database",
+                type="primary",
+                key="create_age_demo",
+            ):
+                try:
+                    # Create 18+ movie
+                    execute_query(
+                        """
+                        INSERT INTO Phim (MaPhim, TuaDe, GioiHanDoTuoi, ThoiLuong, TrangThaiPhatHanh, NgayKhoiChieu_ChinhThuc)
+                        VALUES (?, N'Phim Demo 18+ (T18)', 18, '02:00:00', N'Đang chiếu', '2025-01-01')
+                    """,
+                        (AGE_DEMO_MOVIE_ID,),
+                        fetch=False,
+                    )
+
+                    # Create demo cinema
+                    execute_query(
+                        """
+                        INSERT INTO RapChieuPhim (MaRap, TenRap, DiaChi_ChiTiet, TinhThanh, NgayKhaiTruong, 
+                                                   ThoiGianMoCua, ThoiGianDongCua, MoTaTongQuan, TrangThaiHoatDong, 
+                                                   SoSuatChieu_MotNgay, TyLeLapDay)
+                        VALUES (?, 'CGV Demo Age Check', N'123 Demo Street', 'TP.HCM', '2020-01-01', 
+                                '08:00', '23:59', 'Demo Cinema', N'Hoạt động', 50, 0.7)
+                    """,
+                        (AGE_DEMO_RAP_ID,),
+                        fetch=False,
+                    )
+
+                    # Create room
+                    execute_query(
+                        """
+                        INSERT INTO PhongChieu (MaPhong, MaRap, SucChua, LoaiPhong, TenHienThi) 
+                        VALUES (1, ?, 100, '2D', N'Phòng Demo 01')
+                    """,
+                        (AGE_DEMO_RAP_ID,),
+                        fetch=False,
+                    )
+
+                    # Create 2 seats
+                    execute_query(
+                        """
+                        INSERT INTO Ghe (MaGhe, MaRap, MaPhongChieu, So, Hang, TrangThai, Loai) 
+                        VALUES ('A1', ?, 1, 1, 'A', N'Hoạt động', 'Normal')
+                    """,
+                        (AGE_DEMO_RAP_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        """
+                        INSERT INTO Ghe (MaGhe, MaRap, MaPhongChieu, So, Hang, TrangThai, Loai) 
+                        VALUES ('A2', ?, 1, 2, 'A', N'Hoạt động', 'Normal')
+                    """,
+                        (AGE_DEMO_RAP_ID,),
+                        fetch=False,
+                    )
+
+                    # Create showtime for tomorrow (MaSuatChieu = CHAR(7))
+                    execute_query(
+                        """
+                        INSERT INTO SuatChieu (MaSuatChieu, MaPhim, MaRap, MaPhongChieu, NgayChieu, 
+                                               DinhDangChieu, NgonNgu, TrangThai, HinhThucDichThuat, GioBatDau)
+                        VALUES ('SC_AG01', ?, ?, 1, DATEADD(DAY, 1, CAST(GETDATE() AS DATE)), 
+                                '2D', N'Anh', N'Mở bán', 'PhuDe', '21:00:00')
+                    """,
+                        (AGE_DEMO_MOVIE_ID, AGE_DEMO_RAP_ID),
+                        fetch=False,
+                    )
+
+                    # Create adult customer (35 years old, born 1990)
+                    execute_query(
+                        """
+                        INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang)
+                        VALUES (?, N'Nguyễn Văn A', N'Thành viên')
+                    """,
+                        (AGE_DEMO_ADULT_KH,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        """
+                        INSERT INTO TaiKhoanThanhVien 
+                        (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                         SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
+                        VALUES (?, ?, 'adult_demo_user', 'VIP', '1990-01-15', N'Nam', 
+                                '0911111111', 'adult@demo.com', N'CGV Demo', 0, 1)
+                    """,
+                        (AGE_DEMO_ADULT_TK, AGE_DEMO_ADULT_KH),
+                        fetch=False,
+                    )
+
+                    # Create minor customer (15 years old, born 2010)
+                    execute_query(
+                        """
+                        INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang)
+                        VALUES (?, N'Trần Thị B', N'Thành viên')
+                    """,
+                        (AGE_DEMO_MINOR_KH,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        """
+                        INSERT INTO TaiKhoanThanhVien 
+                        (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                         SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
+                        VALUES (?, ?, 'minor_demo_user', 'Member', '2010-06-20', N'Nữ', 
+                                '0922222222', 'minor@demo.com', N'CGV Demo', 0, 1)
+                    """,
+                        (AGE_DEMO_MINOR_TK, AGE_DEMO_MINOR_KH),
+                        fetch=False,
+                    )
+
+                    st.success("✅ Đã INSERT dữ liệu demo thành công!")
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Lỗi khi tạo dữ liệu demo: {e}")
+
+        # =================================================================
+        # STEP 2: DEMO THE TRIGGER (only if demo data exists)
+        # =================================================================
+        if age_demo_exists:
+            st.divider()
+            st.markdown("### 🧪 Bước 2: Demo Trigger")
+
+            # --- Query buttons ---
+            st.markdown("#### 🔍 Truy vấn dữ liệu hiện tại")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button(
+                    "📋 SELECT Phim Demo", key="query_movie", use_container_width=True
+                ):
+                    st.session_state.show_movie = True
+            with col2:
+                if st.button(
+                    "📋 SELECT Khách Hàng Demo",
+                    key="query_customers",
+                    use_container_width=True,
+                ):
+                    st.session_state.show_customers = True
+
+            # Display movie info
+            if st.session_state.get("show_movie", False):
+                st.markdown("**Bảng `Phim`** (chú ý cột `GioiHanDoTuoi`):")
+                movie_df = execute_query(
+                    """
+                    SELECT MaPhim, TuaDe, GioiHanDoTuoi, TrangThaiPhatHanh
+                    FROM Phim WHERE MaPhim = ?
+                """,
+                    (AGE_DEMO_MOVIE_ID,),
+                )
+                if movie_df is not None and not movie_df.empty:
+                    st.dataframe(movie_df, use_container_width=True, hide_index=True)
+
+            # Display customer info
+            if st.session_state.get("show_customers", False):
+                st.markdown(
+                    "**Bảng `KhachHang` và `TaiKhoanThanhVien`** (chú ý cột `NgaySinh`):"
+                )
+                customers_df = execute_query(
+                    """
+                    SELECT kh.MaKhachHang, kh.HoTen, tk.NgaySinh, 
+                           DATEDIFF(YEAR, tk.NgaySinh, GETDATE()) as Tuoi
+                    FROM KhachHang kh
+                    JOIN TaiKhoanThanhVien tk ON kh.MaKhachHang = tk.MaKhachHang
+                    WHERE kh.MaKhachHang IN (?, ?)
+                """,
+                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                )
+                if customers_df is not None and not customers_df.empty:
+                    st.dataframe(
+                        customers_df, use_container_width=True, hide_index=True
+                    )
+
+            st.markdown("---")
+
+            # --- INSERT buttons ---
+            st.markdown("#### ⚡ Thực hiện INSERT để kích hoạt Trigger")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("""
+                **🧑 Mua vé cho khách hàng 35 tuổi:**
+                ```sql
+                INSERT INTO GiaoDich (...) -- MaKhachHang = 'KH_ADULT_01'
+                INSERT INTO Ve (...) -- Vé phim T18
+                ```
+                *Kỳ vọng: ✅ INSERT **THÀNH CÔNG** (đủ 18 tuổi)*
+                """)
+
+                # Check if adult ticket already exists
+                adult_ticket = execute_query(
+                    """
+                    SELECT COUNT(*) as cnt FROM Ve v
+                    JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
+                    WHERE gd.MaKhachHang = ? AND v.MaPhim = ?
+                """,
+                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MOVIE_ID),
+                )
+                adult_exists = (
+                    adult_ticket is not None
+                    and not adult_ticket.empty
+                    and adult_ticket.iloc[0]["cnt"] > 0
+                )
+
+                if adult_exists:
+                    st.success("✅ Vé đã được mua thành công!")
+                else:
+                    if st.button(
+                        "▶️ INSERT vé cho người lớn (35 tuổi)",
+                        type="primary",
+                        key="buy_adult",
+                    ):
+                        try:
+                            # Create transaction (MaGiaoDich = CHAR(9))
+                            execute_query(
+                                """
+                                INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                      KenhThanhToan, TrangThai, PhuongThuc)
+                                VALUES ('GD_ADT_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
+                            """,
+                                (AGE_DEMO_ADULT_KH,),
+                                fetch=False,
+                            )
+
+                            # Create ticket - this triggers trg_CheckTuoiXemPhim (MaVe = CHAR(9), MaSuatChieu = CHAR(7))
+                            execute_query(
+                                """
+                                INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                VALUES ('VE_ADT_01', 'A1', N'Tạm giữ', 100000, 100000, 0, 
+                                        'GD_ADT_01', ?, 'SC_AG01', GETDATE())
+                            """,
+                                (AGE_DEMO_MOVIE_ID,),
+                                fetch=False,
+                            )
+
+                            st.success(
+                                "✅ INSERT thành công! Khách hàng 35 tuổi ĐỦ TUỔI xem phim T18."
+                            )
+                            st.rerun()
+
+                        except Exception as e:
+                            st.error(f"❌ INSERT thất bại: {e}")
+
+            with col2:
+                st.markdown("""
+                **👶 Mua vé cho khách hàng 15 tuổi:**
+                ```sql
+                INSERT INTO GiaoDich (...) -- MaKhachHang = 'KH_MINOR_01'
+                INSERT INTO Ve (...) -- Vé phim T18
+                ```
+                *Kỳ vọng: ❌ INSERT **THẤT BẠI** + ROLLBACK (chưa đủ 18 tuổi)*
+                """)
+
+                # Check if minor ticket exists (it shouldn't due to trigger)
+                minor_ticket = execute_query(
+                    """
+                    SELECT COUNT(*) as cnt FROM Ve v
+                    JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
+                    WHERE gd.MaKhachHang = ? AND v.MaPhim = ?
+                """,
+                    (AGE_DEMO_MINOR_KH, AGE_DEMO_MOVIE_ID),
+                )
+                minor_exists = (
+                    minor_ticket is not None
+                    and not minor_ticket.empty
+                    and minor_ticket.iloc[0]["cnt"] > 0
+                )
+
+                if minor_exists:
+                    st.warning("⚠️ Vé đã tồn tại (trigger không hoạt động đúng?)")
+                else:
+                    if st.button(
+                        "▶️ INSERT vé cho trẻ vị thành niên (15 tuổi)",
+                        type="secondary",
+                        key="buy_minor",
+                    ):
+                        try:
+                            # Try to create transaction and ticket - should be rolled back by trigger
+                            execute_query(
+                                """
+                                INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                      KenhThanhToan, TrangThai, PhuongThuc)
+                                VALUES ('GD_MNR_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
+                            """,
+                                (AGE_DEMO_MINOR_KH,),
+                                fetch=False,
+                            )
+
+                            execute_query(
+                                """
+                                INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                VALUES ('VE_MNR_01', 'A2', N'Tạm giữ', 100000, 100000, 0, 
+                                        'GD_MNR_01', ?, 'SC_AG01', GETDATE())
+                            """,
+                                (AGE_DEMO_MOVIE_ID,),
+                                fetch=False,
+                            )
+
+                            st.warning(
+                                "⚠️ INSERT thành công? Trigger có thể không hoạt động đúng."
+                            )
+                            st.rerun()
+
+                        except Exception as e:
+                            error_msg = str(e)
+                            if (
+                                "tuổi" in error_msg.lower()
+                                or "age" in error_msg.lower()
+                                or "50001" in error_msg
+                            ):
+                                st.error(f"🔥 **TRIGGER ĐÃ CHẶN GIAO DỊCH!**")
+                                st.info(f"Lỗi từ trigger: `{error_msg}`")
+                                st.success(
+                                    "✅ Đây là kết quả mong đợi - khách hàng 15 tuổi KHÔNG được mua vé phim T18!"
+                                )
+                            else:
+                                st.error(f"❌ Lỗi: {e}")
+
+            # Show current tickets
+            st.markdown("---")
+            st.markdown("#### 📊 Kiểm tra kết quả trong bảng `Ve`")
+
+            if st.button("🔍 SELECT * FROM Ve (demo)", key="check_tickets"):
+                tickets_df = execute_query(
+                    """
+                    SELECT v.MaVe, v.MaPhim, gd.MaKhachHang, kh.HoTen, v.TrangThai
+                    FROM Ve v
+                    JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
+                    JOIN KhachHang kh ON gd.MaKhachHang = kh.MaKhachHang
+                    WHERE v.MaPhim = ?
+                """,
+                    (AGE_DEMO_MOVIE_ID,),
+                )
+
+                if tickets_df is not None and not tickets_df.empty:
+                    st.dataframe(tickets_df, use_container_width=True, hide_index=True)
+                    st.info(
+                        f"Tìm thấy {len(tickets_df)} vé. Nếu trigger hoạt động đúng, chỉ có vé của khách hàng 35 tuổi."
+                    )
+                else:
+                    st.info("Chưa có vé nào được mua.")
+
+            # =================================================================
+            # STEP 3: CLEANUP
+            # =================================================================
+            st.divider()
+            st.markdown("### 🗑️ Bước 3: Xóa dữ liệu demo")
+
+            st.markdown("""
+            Sau khi demo xong, nhấn nút bên dưới để **DELETE** tất cả dữ liệu demo khỏi database.
+            Nếu muốn demo lại, hãy quay lại Bước 1 để tạo dữ liệu mới.
+            """)
+
+            if st.button(
+                "🗑️ DELETE dữ liệu demo (Age Check)",
+                type="secondary",
+                key="delete_age_demo",
+            ):
+                delete_age_demo_data()
+                st.session_state.show_movie = False
+                st.session_state.show_customers = False
+                st.success("✅ Đã DELETE tất cả dữ liệu demo")
+                st.rerun()
+
+        # =================================================================
+        # SQL CODE REFERENCE
+        # =================================================================
+        st.divider()
+        with st.expander("📝 Xem mã SQL của Trigger"):
+            st.code(
+                """
+CREATE TRIGGER trg_CheckTuoiXemPhim
+ON Ve
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN GiaoDich gd ON i.MaGiaoDich = gd.MaGiaoDich
+        JOIN TaiKhoanThanhVien tk ON gd.MaKhachHang = tk.MaKhachHang
+        JOIN Phim p ON i.MaPhim = p.MaPhim
+        JOIN SuatChieu sc ON i.MaSuatChieu = sc.MaSuatChieu
+        WHERE DATEADD(YEAR, p.GioiHanDoTuoi, tk.NgaySinh) > sc.NgayChieu
+    )
+    BEGIN
+        RAISERROR (N'Có khách hàng thành viên chưa đủ tuổi xem phim này!', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END
+            """,
+                language="sql",
+            )
 
 
 # =============================================================================
