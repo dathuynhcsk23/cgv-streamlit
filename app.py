@@ -637,6 +637,55 @@ def page_high_spending_accounts():
 # PAGE: TRIGGER DEMO
 # =============================================================================
 
+# Demo data constants
+DEMO_CUSTOMER_ID = "KH_DEMO_01"
+DEMO_ACCOUNT_ID = "TK_DEMO_001"
+DEMO_TRANSACTION_ID = "GD_DEMO01"
+DEMO_TICKET_ID = "VE_DEMO01"
+
+
+def check_demo_data_exists():
+    """Check if demo data already exists."""
+    result = execute_query(
+        "SELECT COUNT(*) as cnt FROM KhachHang WHERE MaKhachHang = ?",
+        (DEMO_CUSTOMER_ID,),
+    )
+    if result is not None and not result.empty:
+        return result.iloc[0]["cnt"] > 0
+    return False
+
+
+def get_demo_account_spending():
+    """Get current spending of demo account."""
+    result = execute_query(
+        "SELECT TongChiTieuLuyKe FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
+        (DEMO_ACCOUNT_ID,),
+    )
+    if result is not None and not result.empty:
+        return result.iloc[0]["TongChiTieuLuyKe"]
+    return None
+
+
+def get_demo_transaction_status():
+    """Get current status of demo transaction."""
+    result = execute_query(
+        "SELECT TrangThai FROM GiaoDich WHERE MaGiaoDich = ?", (DEMO_TRANSACTION_ID,)
+    )
+    if result is not None and not result.empty:
+        return result.iloc[0]["TrangThai"]
+    return None
+
+
+def get_demo_ticket_value():
+    """Get ticket value of demo transaction."""
+    result = execute_query(
+        "SELECT SUM(GiaSauUuDai) as Total FROM Ve WHERE MaGiaoDich = ?",
+        (DEMO_TRANSACTION_ID,),
+    )
+    if result is not None and not result.empty:
+        return result.iloc[0]["Total"]
+    return None
+
 
 def page_trigger_demo():
     st.header("⚡ Demo Trigger")
@@ -655,38 +704,336 @@ def page_trigger_demo():
 
         st.markdown("""
         **Mô tả:** Trigger này được kích hoạt sau khi cập nhật bảng `GiaoDich`. 
-        Khi trạng thái giao dịch chuyển thành `Đã thanh toán`, trigger sẽ tự động 
-        cộng doanh thu từ vé vào `TongChiTieuLuyKe` của tài khoản thành viên.
+        - Khi trạng thái giao dịch chuyển **thành** `Đã thanh toán` → **Cộng** tiền vé vào `TongChiTieuLuyKe`
+        - Khi trạng thái giao dịch chuyển **từ** `Đã thanh toán` sang trạng thái khác → **Trừ** tiền vé khỏi `TongChiTieuLuyKe`
         """)
 
-        # Show current account balances
-        st.write("**Số dư hiện tại của các tài khoản:**")
-        accounts = execute_query("""
-            SELECT tk.MaTaiKhoan, kh.HoTen, tk.TongChiTieuLuyKe, tk.CapDoTaiKhoan
-            FROM TaiKhoanThanhVien tk
-            JOIN KhachHang kh ON tk.MaKhachHang = kh.MaKhachHang
-            WHERE tk.TrangThaiHoatDong = 1
-            ORDER BY tk.TongChiTieuLuyKe DESC
-        """)
+        st.divider()
+        st.subheader("🧪 Demo Tương Tác")
 
-        if accounts is not None and not accounts.empty:
-            display_accounts = accounts.copy()
-            display_accounts["TongChiTieuLuyKe"] = display_accounts[
-                "TongChiTieuLuyKe"
-            ].apply(format_currency)
-            display_accounts.columns = ["Mã TK", "Họ Tên", "Tổng Chi Tiêu", "Cấp Độ"]
-            st.dataframe(display_accounts, use_container_width=True, hide_index=True)
+        # Initialize session state for demo
+        if "demo_initialized" not in st.session_state:
+            st.session_state.demo_initialized = False
 
-        st.markdown("""
-        **Cách hoạt động:**
-        ```sql
-        -- Khi UPDATE GiaoDich SET TrangThai = N'Đã thanh toán'
-        -- Trigger sẽ tự động:
-        UPDATE TaiKhoanThanhVien 
-        SET TongChiTieuLuyKe = TongChiTieuLuyKe + (Tổng giá vé của giao dịch)
-        WHERE MaKhachHang = (Khách hàng thực hiện giao dịch)
-        ```
-        """)
+        # Check current state
+        demo_exists = check_demo_data_exists()
+
+        # --- STEP 0: Setup Demo Data ---
+        st.markdown("### Bước 0: Khởi tạo dữ liệu demo")
+
+        if demo_exists:
+            st.success("✅ Dữ liệu demo đã tồn tại trong database")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🔄 Reset Demo Data", key="reset_demo"):
+                    # Delete and recreate
+                    execute_query(
+                        "DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False
+                    )
+                    execute_query(
+                        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?",
+                        (DEMO_TRANSACTION_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
+                        (DEMO_ACCOUNT_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        "DELETE FROM KhachHang WHERE MaKhachHang = ?",
+                        (DEMO_CUSTOMER_ID,),
+                        fetch=False,
+                    )
+                    st.session_state.demo_initialized = False
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Xóa Demo Data", key="delete_demo", type="secondary"):
+                    execute_query(
+                        "DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False
+                    )
+                    execute_query(
+                        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?",
+                        (DEMO_TRANSACTION_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
+                        (DEMO_ACCOUNT_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        "DELETE FROM KhachHang WHERE MaKhachHang = ?",
+                        (DEMO_CUSTOMER_ID,),
+                        fetch=False,
+                    )
+                    st.success("✅ Đã xóa dữ liệu demo")
+                    st.session_state.demo_initialized = False
+                    st.rerun()
+        else:
+            st.warning("⚠️ Chưa có dữ liệu demo. Nhấn nút bên dưới để tạo.")
+
+            if st.button("🚀 Tạo Dữ Liệu Demo", type="primary", key="create_demo"):
+                try:
+                    # Get first available showtime for demo
+                    showtime = execute_query("""
+                        SELECT TOP 1 sc.MaSuatChieu, sc.MaPhim, g.MaGhe, sc.MaRap, sc.MaPhongChieu
+                        FROM SuatChieu sc
+                        JOIN Ghe g ON sc.MaRap = g.MaRap AND sc.MaPhongChieu = g.MaPhongChieu
+                        WHERE sc.TrangThai = N'Mở bán'
+                    """)
+
+                    if showtime is None or showtime.empty:
+                        st.error("❌ Không tìm thấy suất chiếu nào đang mở bán!")
+                    else:
+                        sc = showtime.iloc[0]
+
+                        # Create demo customer
+                        execute_query(
+                            """
+                            INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang) 
+                            VALUES (?, N'Demo User - Trigger Test', N'Thành viên')
+                        """,
+                            (DEMO_CUSTOMER_ID,),
+                            fetch=False,
+                        )
+
+                        # Create demo account with 0 spending
+                        execute_query(
+                            """
+                            INSERT INTO TaiKhoanThanhVien 
+                            (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                             SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
+                            VALUES (?, ?, 'demo_trigger_user', 'Member', '1990-01-01', N'Nam', 
+                                    '0999999999', 'demo_trigger@test.com', N'CGV Demo', 0, 1)
+                        """,
+                            (DEMO_ACCOUNT_ID, DEMO_CUSTOMER_ID),
+                            fetch=False,
+                        )
+
+                        # Create demo transaction with status 'Tạm giữ'
+                        execute_query(
+                            """
+                            INSERT INTO GiaoDich 
+                            (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                             KenhThanhToan, TrangThai, PhuongThuc)
+                            VALUES (?, ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Offline')
+                        """,
+                            (DEMO_TRANSACTION_ID, DEMO_CUSTOMER_ID),
+                            fetch=False,
+                        )
+
+                        # Create demo ticket worth 150,000 VND
+                        execute_query(
+                            """
+                            INSERT INTO Ve 
+                            (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                             MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                            VALUES (?, ?, N'Tạm giữ', 150000, 150000, 0, ?, ?, ?, GETDATE())
+                        """,
+                            (
+                                DEMO_TICKET_ID,
+                                sc["MaGhe"],
+                                DEMO_TRANSACTION_ID,
+                                sc["MaPhim"],
+                                sc["MaSuatChieu"],
+                            ),
+                            fetch=False,
+                        )
+
+                        st.success("✅ Đã tạo dữ liệu demo thành công!")
+                        st.session_state.demo_initialized = True
+                        st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Lỗi khi tạo dữ liệu demo: {e}")
+
+        # Only show the rest if demo data exists
+        if demo_exists:
+            st.divider()
+
+            # --- Current State Display ---
+            st.markdown("### 📊 Trạng Thái Hiện Tại")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button(
+                    "🔍 Kiểm tra trạng thái",
+                    key="check_state",
+                    use_container_width=True,
+                ):
+                    st.session_state.show_state = True
+
+            if st.session_state.get("show_state", True):
+                current_spending = get_demo_account_spending()
+                current_status = get_demo_transaction_status()
+                ticket_value = get_demo_ticket_value()
+
+                st.markdown(f"""
+                | Thông tin | Giá trị |
+                |:---|:---|
+                | 👤 **Khách hàng** | `{DEMO_CUSTOMER_ID}` - Demo User |
+                | 💳 **Tài khoản** | `{DEMO_ACCOUNT_ID}` |
+                | 💰 **Tổng chi tiêu lũy kế** | **{format_currency(current_spending) if current_spending is not None else "N/A"}** |
+                | 📝 **Mã giao dịch** | `{DEMO_TRANSACTION_ID}` |
+                | 📊 **Trạng thái giao dịch** | **{current_status or "N/A"}** |
+                | 🎫 **Giá trị vé** | {format_currency(ticket_value) if ticket_value is not None else "N/A"} |
+                """)
+
+            st.divider()
+
+            # --- STEP 1: Confirm Payment ---
+            st.markdown("### Bước 1: Xác nhận thanh toán")
+            st.markdown("""
+            Khi nhấn nút này, trạng thái giao dịch sẽ chuyển từ `Tạm giữ` → `Đã thanh toán`.
+            
+            **Kỳ vọng:** Trigger sẽ tự động **cộng** 150,000 VNĐ vào `TongChiTieuLuyKe`.
+            """)
+
+            current_status = get_demo_transaction_status()
+
+            if current_status == "Tạm giữ":
+                if st.button(
+                    "✅ Xác nhận thanh toán", type="primary", key="confirm_payment"
+                ):
+                    execute_query(
+                        """
+                        UPDATE GiaoDich SET TrangThai = N'Đã thanh toán' WHERE MaGiaoDich = ?
+                    """,
+                        (DEMO_TRANSACTION_ID,),
+                        fetch=False,
+                    )
+                    st.success("✅ Đã cập nhật trạng thái thành 'Đã thanh toán'")
+                    st.info(
+                        "🔥 **Trigger đã được kích hoạt!** Nhấn 'Kiểm tra trạng thái' để xem kết quả."
+                    )
+                    st.session_state.show_state = True
+                    st.rerun()
+            elif current_status == "Đã thanh toán":
+                st.success("✅ Giao dịch đã được thanh toán")
+            else:
+                st.warning(f"⚠️ Trạng thái hiện tại: {current_status}")
+
+            st.divider()
+
+            # --- STEP 2: Cancel/Refund ---
+            st.markdown("### Bước 2: Hủy giao dịch (Hoàn tiền)")
+            st.markdown("""
+            Khi nhấn nút này, trạng thái giao dịch sẽ chuyển từ `Đã thanh toán` → `Hủy`.
+            
+            **Kỳ vọng:** Trigger sẽ tự động **trừ** 150,000 VNĐ khỏi `TongChiTieuLuyKe`.
+            """)
+
+            if current_status == "Đã thanh toán":
+                if st.button(
+                    "❌ Hủy giao dịch", type="secondary", key="cancel_payment"
+                ):
+                    execute_query(
+                        """
+                        UPDATE GiaoDich SET TrangThai = N'Hủy' WHERE MaGiaoDich = ?
+                    """,
+                        (DEMO_TRANSACTION_ID,),
+                        fetch=False,
+                    )
+                    st.success("✅ Đã cập nhật trạng thái thành 'Hủy'")
+                    st.info(
+                        "🔥 **Trigger đã được kích hoạt!** Nhấn 'Kiểm tra trạng thái' để xem kết quả."
+                    )
+                    st.session_state.show_state = True
+                    st.rerun()
+            elif current_status == "Hủy":
+                st.info("ℹ️ Giao dịch đã bị hủy")
+            elif current_status == "Tạm giữ":
+                st.info("ℹ️ Giao dịch chưa được thanh toán, không thể hủy hoàn tiền")
+
+            st.divider()
+
+            # --- STEP 3: Restore to pending ---
+            st.markdown("### Bước 3: Khôi phục về trạng thái chờ (Reset demo)")
+            st.markdown("""
+            Đưa giao dịch về trạng thái `Tạm giữ` để có thể demo lại từ đầu.
+            
+            **Lưu ý:** Thao tác này **không** kích hoạt trigger (vì không liên quan đến `Đã thanh toán`).
+            """)
+
+            if current_status != "Tạm giữ":
+                if st.button("🔄 Khôi phục về 'Tạm giữ'", key="restore_pending"):
+                    # Reset spending to 0 manually since we're just resetting demo
+                    execute_query(
+                        """
+                        UPDATE TaiKhoanThanhVien SET TongChiTieuLuyKe = 0 WHERE MaTaiKhoan = ?
+                    """,
+                        (DEMO_ACCOUNT_ID,),
+                        fetch=False,
+                    )
+                    execute_query(
+                        """
+                        UPDATE GiaoDich SET TrangThai = N'Tạm giữ' WHERE MaGiaoDich = ?
+                    """,
+                        (DEMO_TRANSACTION_ID,),
+                        fetch=False,
+                    )
+                    st.success("✅ Đã khôi phục về trạng thái ban đầu")
+                    st.rerun()
+            else:
+                st.info("ℹ️ Giao dịch đang ở trạng thái 'Tạm giữ'")
+
+            st.divider()
+
+            # --- SQL Code Reference ---
+            with st.expander("📝 Xem mã SQL của Trigger"):
+                st.code(
+                    """
+CREATE TRIGGER trg_UpdateTongChiTieuLuyKe
+ON GiaoDich
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT UPDATE(TrangThai) RETURN;
+
+    DECLARE @Adjustments TABLE (
+        MaTaiKhoan CHAR(12),
+        AdjustmentAmount DECIMAL(18, 2)
+    );
+
+    -- Cộng tiền khi chuyển THÀNH 'Đã thanh toán'
+    INSERT INTO @Adjustments (MaTaiKhoan, AdjustmentAmount)
+    SELECT tk.MaTaiKhoan, SUM(v.GiaSauUuDai) AS TotalAdjustment
+    FROM inserted i
+    JOIN TaiKhoanThanhVien tk ON i.MaKhachHang = tk.MaKhachHang
+    LEFT JOIN deleted d ON i.MaGiaoDich = d.MaGiaoDich
+    JOIN Ve v ON i.MaGiaoDich = v.MaGiaoDich
+    WHERE i.TrangThai = N'Đã thanh toán'
+      AND (d.TrangThai IS NULL OR d.TrangThai <> N'Đã thanh toán')
+    GROUP BY tk.MaTaiKhoan;
+
+    -- Trừ tiền khi chuyển TỪ 'Đã thanh toán' sang trạng thái khác
+    INSERT INTO @Adjustments (MaTaiKhoan, AdjustmentAmount)
+    SELECT tk.MaTaiKhoan, -SUM(v.GiaSauUuDai) AS TotalAdjustment
+    FROM deleted d
+    JOIN TaiKhoanThanhVien tk ON d.MaKhachHang = tk.MaKhachHang
+    JOIN inserted i ON d.MaGiaoDich = i.MaGiaoDich
+    JOIN Ve v ON d.MaGiaoDich = v.MaGiaoDich
+    WHERE d.TrangThai = N'Đã thanh toán'
+      AND i.TrangThai <> N'Đã thanh toán'
+    GROUP BY tk.MaTaiKhoan;
+
+    -- Áp dụng thay đổi
+    UPDATE tk
+    SET tk.TongChiTieuLuyKe = tk.TongChiTieuLuyKe + adj.TotalAmount
+    FROM TaiKhoanThanhVien tk
+    JOIN (
+        SELECT MaTaiKhoan, SUM(AdjustmentAmount) AS TotalAmount
+        FROM @Adjustments
+        GROUP BY MaTaiKhoan
+    ) AS adj ON tk.MaTaiKhoan = adj.MaTaiKhoan;
+END
+                """,
+                    language="sql",
+                )
 
     with tab2:
         st.subheader("Trigger: trg_CheckTuoiXemPhim")
