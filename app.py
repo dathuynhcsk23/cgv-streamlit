@@ -102,6 +102,32 @@ def execute_scalar_function(func_name: str, params: list):
         return None
 
 
+def execute_transaction(queries: list):
+    """Execute multiple queries in a single transaction.
+
+    Args:
+        queries: List of tuples (query_string, params_tuple)
+
+    Returns:
+        True if successful, raises exception on failure
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        for query, params in queries:
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
@@ -547,24 +573,16 @@ def page_revenue_statistics():
                         if data:
                             df = pd.DataFrame(data)
 
-                            # Display with medals
+                            # Display with medals using markdown table for dark mode compatibility
                             medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
                             for i, row in df.iterrows():
                                 medal = medals[i] if i < len(medals) else f"{i + 1}."
-                                col1, col2, col3 = st.columns([1, 3, 2])
-
-                                with col1:
-                                    st.markdown(f"### {medal}")
-                                with col2:
-                                    st.markdown(f"**{row['TuaDe']}**")
-                                    st.caption(f"Mã phim: {row['MaPhim']}")
-                                with col3:
-                                    st.metric(
-                                        "Doanh thu", format_currency(row["DoanhThu"])
-                                    )
-
-                                st.divider()
+                                st.markdown(f"""
+                                | {medal} | **{row["TuaDe"]}** | **{format_currency(row["DoanhThu"])}** |
+                                |:---:|:---|---:|
+                                | | Mã phim: `{row["MaPhim"]}` | |
+                                """)
 
                         else:
                             st.warning("⚠️ Không có dữ liệu trong khoảng thời gian này")
@@ -1340,28 +1358,27 @@ END
                         key="buy_adult",
                     ):
                         try:
-                            # Create transaction (MaGiaoDich = CHAR(9))
-                            execute_query(
-                                """
-                                INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
-                                                      KenhThanhToan, TrangThai, PhuongThuc)
-                                VALUES ('GD_ADT_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
-                            """,
-                                (AGE_DEMO_ADULT_KH,),
-                                fetch=False,
-                            )
-
-                            # Create ticket - this triggers trg_CheckTuoiXemPhim (MaVe = CHAR(9), MaSuatChieu = CHAR(7))
-                            execute_query(
-                                """
-                                INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
-                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
-                                VALUES ('VE_ADT_01', 'A1', N'Tạm giữ', 100000, 100000, 0, 
-                                        'GD_ADT_01', ?, 'SC_AG01', GETDATE())
-                            """,
-                                (AGE_DEMO_MOVIE_ID,),
-                                fetch=False,
-                            )
+                            # Execute both INSERTs in a single transaction
+                            queries = [
+                                (
+                                    """
+                                    INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                          KenhThanhToan, TrangThai, PhuongThuc)
+                                    VALUES ('GD_ADT_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
+                                """,
+                                    (AGE_DEMO_ADULT_KH,),
+                                ),
+                                (
+                                    """
+                                    INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                    VALUES ('VE_ADT_01', 'A1', N'Tạm giữ', 100000, 100000, 0, 
+                                            'GD_ADT_01', ?, 'SC_AG01', GETDATE())
+                                """,
+                                    (AGE_DEMO_MOVIE_ID,),
+                                ),
+                            ]
+                            execute_transaction(queries)
 
                             st.success(
                                 "✅ INSERT thành công! Khách hàng 35 tuổi ĐỦ TUỔI xem phim T18."
@@ -1405,27 +1422,28 @@ END
                         key="buy_minor",
                     ):
                         try:
-                            # Try to create transaction and ticket - should be rolled back by trigger
-                            execute_query(
-                                """
-                                INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
-                                                      KenhThanhToan, TrangThai, PhuongThuc)
-                                VALUES ('GD_MNR_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
-                            """,
-                                (AGE_DEMO_MINOR_KH,),
-                                fetch=False,
-                            )
-
-                            execute_query(
-                                """
-                                INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
-                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
-                                VALUES ('VE_MNR_01', 'A2', N'Tạm giữ', 100000, 100000, 0, 
-                                        'GD_MNR_01', ?, 'SC_AG01', GETDATE())
-                            """,
-                                (AGE_DEMO_MOVIE_ID,),
-                                fetch=False,
-                            )
+                            # Execute both INSERTs in a single transaction
+                            # When trigger fires ROLLBACK, both GiaoDich and Ve will be rolled back
+                            queries = [
+                                (
+                                    """
+                                    INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                          KenhThanhToan, TrangThai, PhuongThuc)
+                                    VALUES ('GD_MNR_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
+                                """,
+                                    (AGE_DEMO_MINOR_KH,),
+                                ),
+                                (
+                                    """
+                                    INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                    VALUES ('VE_MNR_01', 'A2', N'Tạm giữ', 100000, 100000, 0, 
+                                            'GD_MNR_01', ?, 'SC_AG01', GETDATE())
+                                """,
+                                    (AGE_DEMO_MOVIE_ID,),
+                                ),
+                            ]
+                            execute_transaction(queries)
 
                             st.warning(
                                 "⚠️ INSERT thành công? Trigger có thể không hoạt động đúng."
@@ -1439,7 +1457,7 @@ END
                                 or "age" in error_msg.lower()
                                 or "50001" in error_msg
                             ):
-                                st.error(f"🔥 **TRIGGER ĐÃ CHẶN GIAO DỊCH!**")
+                                st.error("🔥 **TRIGGER ĐÃ CHẶN GIAO DỊCH!**")
                                 st.info(f"Lỗi từ trigger: `{error_msg}`")
                                 st.success(
                                     "✅ Đây là kết quả mong đợi - khách hàng 15 tuổi KHÔNG được mua vé phim T18!"
@@ -1447,14 +1465,36 @@ END
                             else:
                                 st.error(f"❌ Lỗi: {e}")
 
-            # Show current tickets
+            # Show current transactions and tickets
             st.markdown("---")
-            st.markdown("#### 📊 Kiểm tra kết quả trong bảng `Ve`")
+            st.markdown("#### 📊 Kiểm tra kết quả trong bảng `GiaoDich` và `Ve`")
 
-            if st.button("🔍 SELECT * FROM Ve (demo)", key="check_tickets"):
+            if st.button("🔍 SELECT giao dịch và vé (demo)", key="check_tickets"):
+                # Show GiaoDich (transactions) table
+                st.markdown("**Bảng `GiaoDich`** (giao dịch của các tài khoản demo):")
+                transactions_df = execute_query(
+                    """
+                    SELECT gd.MaGiaoDich, gd.MaKhachHang, kh.HoTen, gd.TrangThai, gd.ThoiDiemBatDau
+                    FROM GiaoDich gd
+                    JOIN KhachHang kh ON gd.MaKhachHang = kh.MaKhachHang
+                    WHERE gd.MaKhachHang IN (?, ?)
+                    ORDER BY gd.ThoiDiemBatDau DESC
+                """,
+                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                )
+
+                if transactions_df is not None and not transactions_df.empty:
+                    st.dataframe(
+                        transactions_df, use_container_width=True, hide_index=True
+                    )
+                else:
+                    st.info("Chưa có giao dịch nào.")
+
+                # Show Ve (tickets) table
+                st.markdown("**Bảng `Ve`** (vé của các tài khoản demo):")
                 tickets_df = execute_query(
                     """
-                    SELECT v.MaVe, v.MaPhim, gd.MaKhachHang, kh.HoTen, v.TrangThai
+                    SELECT v.MaVe, v.MaGiaoDich, v.MaPhim, gd.MaKhachHang, kh.HoTen, v.TrangThai
                     FROM Ve v
                     JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
                     JOIN KhachHang kh ON gd.MaKhachHang = kh.MaKhachHang
@@ -1465,11 +1505,30 @@ END
 
                 if tickets_df is not None and not tickets_df.empty:
                     st.dataframe(tickets_df, use_container_width=True, hide_index=True)
-                    st.info(
-                        f"Tìm thấy {len(tickets_df)} vé. Nếu trigger hoạt động đúng, chỉ có vé của khách hàng 35 tuổi."
-                    )
                 else:
                     st.info("Chưa có vé nào được mua.")
+
+                # Summary
+                tx_count = (
+                    len(transactions_df)
+                    if transactions_df is not None and not transactions_df.empty
+                    else 0
+                )
+                ve_count = (
+                    len(tickets_df)
+                    if tickets_df is not None and not tickets_df.empty
+                    else 0
+                )
+
+                if tx_count > 0 or ve_count > 0:
+                    st.info(f"""
+                    **Kết quả:** {tx_count} giao dịch, {ve_count} vé.
+                    
+                    Nếu trigger hoạt động đúng:
+                    - Chỉ có **1 giao dịch** (của khách hàng 35 tuổi)
+                    - Chỉ có **1 vé** (của khách hàng 35 tuổi)
+                    - Giao dịch + vé của khách hàng 15 tuổi đã bị **ROLLBACK** hoàn toàn
+                    """)
 
             # =================================================================
             # STEP 3: CLEANUP
