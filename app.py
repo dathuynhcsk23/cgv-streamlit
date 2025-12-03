@@ -7,7 +7,7 @@ import streamlit as st
 import pyodbc
 import pandas as pd
 import json
-from datetime import date, time, datetime
+from datetime import date, time
 
 # =============================================================================
 # DATABASE CONNECTION
@@ -1586,6 +1586,171 @@ END
 
 
 # =============================================================================
+# PAGE: GROUP INFO
+# =============================================================================
+
+
+def page_group_info():
+    # Project Info Card with HCMUT Logo
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%); 
+                padding: 40px; border-radius: 20px; margin-bottom: 40px; 
+                box-shadow: 0 15px 35px rgba(0,0,0,0.3);">
+        <div style="display: flex; align-items: center; margin-bottom: 25px;">
+            <img src="https://hcmut.edu.vn/img/nhanDienThuongHieu/01_logobachkhoasang.png" 
+                 style="width: 80px; height: 80px; margin-right: 25px; 
+                        background: white; padding: 10px; border-radius: 15px;
+                        box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
+            <div style="flex: 1;">
+                <h1 style="color: white; margin: 0; font-size: 28px; font-weight: bold; 
+                           text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+                    🎬 Hệ Thống Quản Lý Rạp Chiếu Phim CGV
+                </h1>
+                <p style="color: rgba(255,255,255,0.9); margin: 5px 0 0 0; font-size: 16px;">
+                    Bài Tập Lớn - Hệ Cơ Sở Dữ Liệu
+                </p>
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+                    gap: 20px; color: white; font-size: 15px;">
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+                       border-left: 4px solid #60a5fa;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">🏫</span>
+                    <span style="opacity: 0.8; font-size: 13px;">Trường</span>
+                </div>
+                <div style="font-weight: bold; font-size: 16px; line-height: 1.4;">
+                    Đại học Bách Khoa TP.HCM (HCMUT)
+                </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+                       border-left: 4px solid #34d399;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">📚</span>
+                    <span style="opacity: 0.8; font-size: 13px;">Môn học</span>
+                </div>
+                <div style="font-weight: bold; font-size: 16px; line-height: 1.4;">
+                    Hệ Cơ Sở Dữ Liệu (TN) - (CO2014)
+                </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+                       border-left: 4px solid #fbbf24;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">📅</span>
+                    <span style="opacity: 0.8; font-size: 13px;">Học kỳ</span>
+                </div>
+                <div style="font-weight: bold; font-size: 16px;">
+                    251 (HK1 2025-2026)
+                </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+                       border-left: 4px solid #f472b6;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">👨‍🏫</span>
+                    <span style="opacity: 0.8; font-size: 13px;">Giáo viên hướng dẫn</span>
+                </div>
+                <div style="font-weight: bold; font-size: 16px;">
+                    Dương Huỳnh Anh Đức
+                </div>
+            </div>
+            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;
+                       border-left: 4px solid #a78bfa; grid-column: span 2;">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <span style="font-size: 24px; margin-right: 10px;">👥</span>
+                    <span style="opacity: 0.8; font-size: 13px;">Nhóm</span>
+                </div>
+                <div style="font-weight: bold; font-size: 16px;">
+                    Nhóm 06
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Team Members Section
+    st.markdown("## 👨‍💻 Thành Viên Nhóm")
+    
+    # Member information
+    members = [
+        [2310409, 'Đỗ Phúc Danh'],
+        [2310641, 'Huỳnh Tuấn Đạt'],
+        [2412130, 'Trịnh Xuân Minh'],
+        [2411759, 'Nguyễn Trần Trung Kiên'],
+        [2410226, 'Hoàng Gia Bảo'],
+        [2411506, 'Hoàng Quốc Khánh']
+    ]
+    
+    # Display members in rows of 3
+    cols = st.columns(3)
+    for i in range(0, len(members), 3):
+        for j in range(3):
+            if i + j < len(members):
+                mssv, name = members[i + j]
+                role, color = ("Nhóm trưởng", "#764ba2") if i + j == 0 else (f"Thành viên {i + j}", "#667eea")
+                
+                with cols[j]:
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; 
+                                border-left: 4px solid {color}; height: 100%; min-height: 180px;">
+                        <h3 style="color: {color}; margin-top: 0;">👤 {role}</h3>"""
+                        f"""<p style="color: #333;">MSSV: <strong>{mssv}</strong></p>"""
+                        f"""<p style="color: #333;">Họ tên: <strong>{name}</strong></p>"""
+                        # """<p style="color: #333;"><strong>Email:</strong> {email}</p>"""
+                    "</div>", unsafe_allow_html=True)
+                    st.markdown("<br>", unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Project Overview
+    st.markdown("## 📋 Mô Tả Bài Tập Lớn")
+    
+    st.markdown("""
+    <div style="background-color: #fff3cd; padding: 20px; border-radius: 10px; 
+                border-left: 4px solid #ffc107;">
+        <h4 style="margin-top: 0; color: #856404;">🎯 Mục tiêu</h4>
+        <p style="color: #856404;">
+            Xây dựng hệ thống quản lý cơ sở dữ liệu cho chuỗi rạp chiếu phim CGV, 
+            bao gồm quản lý phim, suất chiếu, vé, khách hàng và thống kê doanh thu.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Features Section
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div style="background-color: #d1ecf1; padding: 20px; border-radius: 10px; 
+                    border-left: 4px solid #17a2b8;">
+            <h4 style="margin-top: 0; color: #0c5460;">✨ Tính năng chính</h4>
+            <ul style="color: #0c5460;">
+                <li>Quản lý suất chiếu phim</li>
+                <li>Tìm kiếm và cập nhật thông tin suất chiếu</li>
+                <li>Thống kê doanh thu theo rạp</li>
+                <li>Xếp hạng phim theo doanh thu</li>
+                <li>Quản lý tài khoản khách hàng</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div style="background-color: #d4edda; padding: 20px; border-radius: 10px; 
+                    border-left: 4px solid #28a745;">
+            <h4 style="margin-top: 0; color: #155724;">🛠️ Công nghệ sử dụng</h4>
+            <ul style="color: #155724;">
+                <li><strong>Database:</strong> MS SQL Server</li>
+                <li><strong>Backend:</strong> Python, PyODBC</li>
+                <li><strong>Frontend:</strong> Streamlit</li>
+                <li><strong>Triggers:</strong> Tự động cập nhật chi tiêu</li>
+                <li><strong>Functions:</strong> Thống kê và báo cáo</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+# =============================================================================
 # PAGE: DATABASE INFO
 # =============================================================================
 
@@ -1696,11 +1861,12 @@ def main():
     )
 
     # Sidebar
-    st.sidebar.image(
-        "https://upload.wikimedia.org/wikipedia/vi/4/43/CGV_Logo_Global_BI_V9-02.png",
-        width=150,
-    )
-    st.sidebar.title("CGV Cinema")
+    st.sidebar.markdown("""
+    <div style="text-align: center; margin: 20px 0;">
+        <img src="https://upload.wikimedia.org/wikipedia/vi/4/43/CGV_Logo_Global_BI_V9-02.png" 
+             width="300" style="margin-bottom: 10px;">
+    </div>
+    """, unsafe_allow_html=True)
     st.sidebar.markdown("---")
 
     # Navigation
@@ -1710,6 +1876,7 @@ def main():
         "💳 Tài Khoản Chi Tiêu Cao": page_high_spending_accounts,
         "⚡ Demo Trigger": page_trigger_demo,
         "ℹ️ Thông Tin Database": page_database_info,
+        "👥 Thông Tin Nhóm": page_group_info,
     }
 
     selection = st.sidebar.radio("Chọn chức năng", list(pages.keys()))
