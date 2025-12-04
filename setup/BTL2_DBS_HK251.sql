@@ -976,6 +976,8 @@ GO
 
 ----2.1-----
 
+
+-- Thủ tục Insert suất chiếu --
 CREATE OR ALTER PROCEDURE sp_Insert_SuatChieu
     @MaSuatChieu CHAR(7),
     @MaPhim CHAR(10),
@@ -1053,25 +1055,22 @@ BEGIN
             RETURN;
         END
 
-        -- 8. KIỂM TRA LOGIC NGHIỆP VỤ: LoaiPhong phải nằm trong DinhDangHoTro_Phim
+        -- 8. KIỂM TRA LOGIC: LoaiPhong phải nằm trong DinhDangHoTro_Phim và tương thích với DinhDangChieu
         IF NOT EXISTS (
             SELECT 1 
             FROM PhongChieu AS PC 
             INNER JOIN DinhDangHoTro_Phim AS DDH 
                 ON PC.LoaiPhong = DDH.DinhDangHoTro
             WHERE 
-                PC.MaPhong = @MaPhongChieu AND PC.MaRap = @MaRap
+                PC.MaPhong = @MaPhongChieu 
+                AND PC.MaRap = @MaRap
                 AND DDH.Ma_Phim = @MaPhim
+                AND PC.LoaiPhong = @DinhDangChieu
         )
         BEGIN
-            -- Lấy LoaiPhong của phòng chiếu để hiển thị lỗi chi tiết
-            DECLARE @LoaiPhong NVARCHAR(10);
-            SELECT @LoaiPhong = LoaiPhong FROM PhongChieu WHERE MaPhong = @MaPhongChieu AND MaRap = @MaRap;
-
-            SET @ErrorMessage = N'Lỗi logic nghiệp vụ: Phim có Mã (' + @MaPhim + 
-                                N') không hỗ trợ định dạng phòng chiếu (' + @LoaiPhong + 
-                                N') của Phòng (' + CAST(@MaPhongChieu AS NVARCHAR(5)) + 
-                                N') tại Rạp (' + @MaRap + N').';
+            SET @ErrorMessage = N'Lỗi logic: Phòng (' + CAST(@MaPhongChieu AS NVARCHAR(5)) +
+                                N') tại Rạp (' + @MaRap +
+                                N') không hỗ trợ định dạng chiếu (' + @DinhDangChieu + N').';
             RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
             RETURN;
         END
@@ -1116,6 +1115,7 @@ BEGIN
 END
 GO
 
+-- Thủ tục Update thông tin suất chiếu --
 CREATE OR ALTER PROCEDURE Update_ThongTinSuatChieu
     @MaSuatChieu CHAR(7),
     @MaPhim CHAR(10),
@@ -1185,11 +1185,13 @@ BEGIN
 END
 GO
 
+-- Thủ tục Delete suất chiếu -- 
 CREATE OR ALTER PROCEDURE Delete_SuatChieu
 	@MaSuatChieu CHAR(7), 
 	@MaPhim CHAR(10)
 AS
 BEGIN
+    -- Kiểm tra suất chiếu có tồn tại không --
 	IF NOT EXISTS(
 		SELECT 1
 		FROM SuatChieu
@@ -1198,8 +1200,8 @@ BEGIN
 	BEGIN
 		RAISERROR('Lỗi: Không tìm thấy suất chiếu này.', 16,1);
 	END
-
-	IF EXISTS(
+    -- Nếu suất chiếu tồn tại thì kiểm tra xem có vé nào đang đặt đối với suất chiếu này không
+	ELSE IF EXISTS(
 		SELECT 1
 		FROM Ve
 		WHERE @MaSuatChieu = Ve.MaSuatChieu AND @MaPhim = Ve.MaPhim
@@ -1220,7 +1222,7 @@ BEGIN
                 AS time)
 		FROM SuatChieu sc, Phim p
 		WHERE @MaSuatChieu = sc.MaSuatChieu AND @MaPhim = sc.MaPhim
-
+        -- Kiểm tra xem suất chiếu đã hết hạn chưa --
 		IF (@current_date > @date) OR (@current_date = @date AND @current_time > @end_time)
 			BEGIN
 				DELETE FROM Ve
@@ -1239,10 +1241,11 @@ BEGIN
 	BEGIN
 		DELETE FROM SuatChieu
 		WHERE @MaSuatChieu = MaSuatChieu AND @MaPhim = MaPhim
-		PRINT 'Xóa suất chiếu thành công!';
+		PRINT N'Xóa suất chiếu thành công!';
 	END
 END
 GO
+
 ---2.2---
 
 CREATE TRIGGER trg_UpdateTongChiTieuLuyKe
@@ -1324,6 +1327,8 @@ BEGIN
 END
 GO
 
+
+
 -- ================================
 -- PHẦN 2.3 - Truy vấn có WHERE, ORDER BY, GROUP BY, HAVING
 -- ================================
@@ -1336,11 +1341,8 @@ CREATE OR ALTER PROCEDURE TimSuatChieu
     @TuaDe NVARCHAR(50) = NULL
 AS
 BEGIN
-    SELECT
+    SELECT 
         SC.MaSuatChieu,
-        SC.MaPhim,
-        SC.MaRap,
-        SC.MaPhongChieu,
         P.TuaDe,
         P.ThoiLuong,
         SC.GioBatDau,
@@ -1348,16 +1350,16 @@ BEGIN
         R.TenRap,
         SC.DinhDangChieu,
         SC.NgonNgu
-    FROM
+    FROM 
         SuatChieu SC
         JOIN Phim P ON SC.MaPhim = P.MaPhim
         JOIN RapChieuPhim R ON SC.MaRap = R.MaRap
-    WHERE
+    WHERE 
         (@NgayChieu IS NULL OR SC.NgayChieu = @NgayChieu)
         AND (@Gio IS NULL OR SC.GioBatDau >= @Gio)
         AND (@TenRap IS NULL OR R.TenRap = @TenRap)
         AND (@TuaDe IS NULL OR P.TuaDe = @TuaDe)
-    ORDER BY
+    ORDER BY 
         SC.NgayChieu DESC, SC.GioBatDau ASC;
 END;
 GO

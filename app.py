@@ -164,6 +164,23 @@ def get_rooms(cinema_id: str):
     return pd.DataFrame()
 
 
+def get_showtime_details(ma_suat_chieu: str):
+    """Get detailed showtime info (MaPhim, MaRap, MaPhongChieu, TenPhong) from SuatChieu table."""
+    df = execute_query(
+        """
+        SELECT sc.MaSuatChieu, sc.MaPhim, sc.MaRap, sc.MaPhongChieu, 
+               pc.TenHienThi as TenPhong, pc.LoaiPhong
+        FROM SuatChieu sc
+        LEFT JOIN PhongChieu pc ON sc.MaRap = pc.MaRap AND sc.MaPhongChieu = pc.MaPhong
+        WHERE sc.MaSuatChieu = ?
+        """,
+        (ma_suat_chieu,),
+    )
+    if df is not None and not df.empty:
+        return df.iloc[0]
+    return None
+
+
 def format_currency(value):
     """Format number as Vietnamese currency."""
     return f"{value:,.0f} VNĐ"
@@ -232,6 +249,20 @@ def page_showtime_management():
 
             df = st.session_state["search_results"]
 
+            # Get room info for each showtime
+            room_info = []
+            for _, row in df.iterrows():
+                details = get_showtime_details(row["MaSuatChieu"])
+                if details is not None:
+                    room_info.append(
+                        f"{details['TenPhong']} ({details['LoaiPhong']})"
+                        if details["TenPhong"]
+                        else "N/A"
+                    )
+                else:
+                    room_info.append("N/A")
+            df["PhongChieu"] = room_info
+
             # Format display
             display_df = df.copy()
             if "NgayChieu" in display_df.columns:
@@ -267,9 +298,10 @@ def page_showtime_management():
                     st.info(f"""
                     **Thông tin suất chiếu:**
                     - Mã suất chiếu: `{selected_row["MaSuatChieu"]}`
-                    - Mã phim: `{selected_row["MaPhim"]}`
-                    - Mã rạp: `{selected_row["MaRap"]}`
-                    - Phòng chiếu: `{selected_row["MaPhongChieu"]}`
+                    - Phim: `{selected_row["TuaDe"]}`
+                    - Rạp: `{selected_row["TenRap"]}`
+                    - Phòng chiếu: `{selected_row["PhongChieu"]}`
+                    - Giờ chiếu: `{selected_row["GioBatDau"]}`
                     """)
 
             with col2:
@@ -283,7 +315,13 @@ def page_showtime_management():
                 if selected_showtime:
                     selected_idx = showtime_options.index(selected_showtime)
                     selected_row = df.iloc[selected_idx]
-                    rooms_df = get_rooms(selected_row["MaRap"])
+                    # Get detailed info from SuatChieu table (MaPhim, MaRap, MaPhongChieu)
+                    showtime_details = get_showtime_details(selected_row["MaSuatChieu"])
+                    rooms_df = (
+                        get_rooms(showtime_details["MaRap"])
+                        if showtime_details is not None
+                        else pd.DataFrame()
+                    )
 
                     if not rooms_df.empty:
                         room_options = [None] + [
@@ -305,15 +343,15 @@ def page_showtime_management():
 
                 with col_btn1:
                     if st.button("✏️ Cập nhật", type="primary", key="btn_update"):
-                        if selected_showtime:
+                        if selected_showtime and showtime_details is not None:
                             params = {
                                 "MaSuatChieu": selected_row["MaSuatChieu"],
-                                "MaPhim": selected_row["MaPhim"],
+                                "MaPhim": showtime_details["MaPhim"],
                                 "GioBatDauMoi": new_time.strftime("%H:%M:%S")
                                 if new_time
                                 else None,
                                 "MaPhongMoi": new_room if new_room else None,
-                                "MaRap": selected_row["MaRap"],
+                                "MaRap": showtime_details["MaRap"],
                             }
                             result = execute_procedure(
                                 "Update_ThongTinSuatChieu", params, fetch=False
@@ -324,10 +362,10 @@ def page_showtime_management():
 
                 with col_btn2:
                     if st.button("🗑️ Xóa", type="secondary", key="btn_delete"):
-                        if selected_showtime:
+                        if selected_showtime and showtime_details is not None:
                             params = {
                                 "MaSuatChieu": selected_row["MaSuatChieu"],
-                                "MaPhim": selected_row["MaPhim"],
+                                "MaPhim": showtime_details["MaPhim"],
                             }
                             result = execute_procedure(
                                 "Delete_SuatChieu", params, fetch=False
