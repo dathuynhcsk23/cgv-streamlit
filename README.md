@@ -111,6 +111,11 @@ Sau đó truy cập ứng dụng tại: **http://localhost:8501**
 - Xem danh sách bảng
 - Xem Stored Procedures, Functions, Triggers
 
+### 6. 👥 Thông Tin Nhóm
+
+- Xem thông tin cơ bản của project
+- Xem danh sách thành viên
+
 ## 🔧 Cấu hình kết nối Database
 
 Nếu cần thay đổi thông tin kết nối, chỉnh sửa biến `CONN_STR` trong file `app.py`:
