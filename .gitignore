@@ -8,6 +8,7 @@ wheels/
 
 # Log files
 *.log
+*.old
 
 # Virtual environments
 .venv

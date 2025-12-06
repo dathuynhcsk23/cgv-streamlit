@@ -26,7 +26,9 @@ def get_connection():
     return pyodbc.connect(CONN_STR)
 
 
-def execute_query(query: str, params: tuple = None, fetch: bool = True):
+def execute_query(
+    query: str, params: tuple = None, fetch: bool = True, raise_on_error: bool = False
+):
     """Execute a query and optionally fetch results."""
     try:
         with get_connection() as conn:
@@ -41,9 +43,15 @@ def execute_query(query: str, params: tuple = None, fetch: bool = True):
                 rows = cursor.fetchall()
                 return pd.DataFrame.from_records(rows, columns=columns)
             else:
+                # For multi-statement batches, we need to consume all result sets
+                # to ensure any errors (like THROW) are properly raised
+                while cursor.nextset():
+                    pass
                 conn.commit()
                 return True
     except Exception as e:
+        if raise_on_error:
+            raise
         st.error(f"Database error: {e}")
         return None
 
@@ -71,19 +79,7 @@ def execute_procedure(proc_name: str, params: dict, fetch: bool = True):
                 conn.commit()
                 return True
     except pyodbc.Error as e:
-        error_msg = str(e)
-        # Extract the custom error message from SQL Server
-        if "[SQL Server]" in error_msg:
-            start = error_msg.find("[SQL Server]") + len("[SQL Server]")
-            end = (
-                error_msg.find("(", start)
-                if "(" in error_msg[start:]
-                else len(error_msg)
-            )
-            clean_msg = error_msg[start:end].strip()
-            st.error(f"❌ {clean_msg}")
-        else:
-            st.error(f"❌ Database error: {error_msg}")
+        st.error(f"❌ Database error: {str(e)}")
         return None
 
 
@@ -164,7 +160,7 @@ def get_rooms(cinema_id: str):
     return pd.DataFrame()
 
 
-def get_showtime_details(ma_suat_chieu: str):
+def get_showtime_details(ma_suat_chieu: int):
     """Get detailed showtime info (MaPhim, MaRap, MaPhongChieu, TenPhong) from SuatChieu table."""
     df = execute_query(
         """
@@ -263,6 +259,9 @@ def page_showtime_management():
                     room_info.append("N/A")
             df["PhongChieu"] = room_info
 
+            # Sort by MaSuatChieu descending
+            df = df.sort_values("MaSuatChieu", ascending=False)
+
             # Format display
             display_df = df.copy()
             if "NgayChieu" in display_df.columns:
@@ -279,6 +278,10 @@ def page_showtime_management():
             # Update/Delete section
             st.divider()
             st.subheader("Cập nhật / Xóa suất chiếu")
+
+            # Display success message from session state (persists across rerun)
+            if "showtime_success_msg" in st.session_state:
+                st.success(st.session_state.pop("showtime_success_msg"))
 
             col1, col2 = st.columns(2)
 
@@ -316,9 +319,11 @@ def page_showtime_management():
                     selected_idx = showtime_options.index(selected_showtime)
                     selected_row = df.iloc[selected_idx]
                     # Get detailed info from SuatChieu table (MaPhim, MaRap, MaPhongChieu)
-                    showtime_details = get_showtime_details(selected_row["MaSuatChieu"])
+                    showtime_details = get_showtime_details(
+                        int(selected_row["MaSuatChieu"])
+                    )
                     rooms_df = (
-                        get_rooms(showtime_details["MaRap"])
+                        get_rooms(str(showtime_details["MaRap"]))
                         if showtime_details is not None
                         else pd.DataFrame()
                     )
@@ -345,139 +350,139 @@ def page_showtime_management():
                     if st.button("✏️ Cập nhật", type="primary", key="btn_update"):
                         if selected_showtime and showtime_details is not None:
                             params = {
-                                "MaSuatChieu": selected_row["MaSuatChieu"],
-                                "MaPhim": showtime_details["MaPhim"],
+                                "MaSuatChieu": int(selected_row["MaSuatChieu"]),
+                                "MaPhim": int(showtime_details["MaPhim"]),
                                 "GioBatDauMoi": new_time.strftime("%H:%M:%S")
                                 if new_time
                                 else None,
                                 "MaPhongMoi": new_room if new_room else None,
-                                "MaRap": showtime_details["MaRap"],
+                                "MaRap": str(showtime_details["MaRap"]),
                             }
                             result = execute_procedure(
                                 "Update_ThongTinSuatChieu", params, fetch=False
                             )
                             if result:
-                                st.success("✅ Cập nhật suất chiếu thành công!")
+                                st.session_state["showtime_success_msg"] = (
+                                    "✅ Cập nhật suất chiếu thành công!"
+                                )
                                 st.rerun()
 
                 with col_btn2:
                     if st.button("🗑️ Xóa", type="secondary", key="btn_delete"):
                         if selected_showtime and showtime_details is not None:
                             params = {
-                                "MaSuatChieu": selected_row["MaSuatChieu"],
-                                "MaPhim": showtime_details["MaPhim"],
+                                "MaSuatChieu": int(selected_row["MaSuatChieu"]),
+                                "MaPhim": int(showtime_details["MaPhim"]),
                             }
                             result = execute_procedure(
                                 "Delete_SuatChieu", params, fetch=False
                             )
                             if result:
-                                st.success("✅ Xóa suất chiếu thành công!")
+                                st.session_state["showtime_success_msg"] = (
+                                    "✅ Xóa suất chiếu thành công!"
+                                )
                                 st.rerun()
 
     # TAB 2: Add New Showtime
     with tab2:
         st.subheader("Thêm suất chiếu mới")
 
-        with st.form("add_showtime_form"):
-            col1, col2 = st.columns(2)
+        # Display success message from session state (persists across rerun)
+        if "add_showtime_success_msg" in st.session_state:
+            st.success(st.session_state.pop("add_showtime_success_msg"))
 
-            with col1:
-                new_showtime_id = st.text_input(
-                    "🎫 Mã suất chiếu", placeholder="VD: SC00013", max_chars=7
-                )
+        col1, col2 = st.columns(2)
 
-                movies = get_movies()
-                selected_movie = st.selectbox(
-                    "🎥 Chọn phim", list(movies.keys()), key="add_movie"
-                )
-
-                cinemas = get_cinemas()
-                selected_cinema = st.selectbox(
-                    "🏛️ Chọn rạp", list(cinemas.keys()), key="add_cinema"
-                )
-
-                if selected_cinema:
-                    rooms_df = get_rooms(cinemas[selected_cinema])
-                    if not rooms_df.empty:
-                        room_options = [
-                            f"{row['MaPhong']} - {row['TenHienThi']} ({row['LoaiPhong']})"
-                            for _, row in rooms_df.iterrows()
-                        ]
-                        selected_room = st.selectbox(
-                            "🚪 Chọn phòng chiếu", room_options, key="add_room"
-                        )
-                    else:
-                        st.warning("Không có phòng chiếu khả dụng")
-                        selected_room = None
-
-                show_date = st.date_input(
-                    "📅 Ngày chiếu", value=date.today(), key="add_date"
-                )
-
-            with col2:
-                show_time = st.time_input(
-                    "⏰ Giờ bắt đầu", value=time(10, 0), key="add_time"
-                )
-
-                format_options = ["2D", "3D", "IMAX", "4DX", "GOLDCLASS", "STARIUM"]
-                show_format = st.selectbox(
-                    "📺 Định dạng chiếu", format_options, key="add_format"
-                )
-
-                language_options = [
-                    "Tiếng Việt",
-                    "Tiếng Anh",
-                    "Tiếng Hàn",
-                    "Tiếng Nhật",
-                    "Tiếng Trung",
-                ]
-                show_language = st.selectbox(
-                    "🌐 Ngôn ngữ", language_options, key="add_language"
-                )
-
-                status_options = ["Mở bán", "Khóa bán"]
-                show_status = st.selectbox(
-                    "📊 Trạng thái", status_options, key="add_status"
-                )
-
-                subtitle_options = {"Phụ đề": "PhuDe", "Lồng tiếng": "LongTieng"}
-                show_subtitle = st.selectbox(
-                    "💬 Hình thức dịch thuật",
-                    list(subtitle_options.keys()),
-                    key="add_subtitle",
-                )
-
-            submitted = st.form_submit_button(
-                "➕ Thêm suất chiếu", type="primary", use_container_width=True
+        with col1:
+            # Movie and Cinema selection OUTSIDE form for dynamic room updates
+            movies = get_movies()
+            selected_movie = st.selectbox(
+                "🎥 Chọn phim", list(movies.keys()), key="add_movie"
             )
 
-            if submitted:
-                # Validation
-                if not new_showtime_id:
-                    st.error("❌ Vui lòng nhập mã suất chiếu")
-                elif len(new_showtime_id) != 7:
-                    st.error("❌ Mã suất chiếu phải có đúng 7 ký tự")
-                elif not selected_room:
-                    st.error("❌ Vui lòng chọn phòng chiếu")
+            cinemas = get_cinemas()
+            selected_cinema = st.selectbox(
+                "🏛️ Chọn rạp", list(cinemas.keys()), key="add_cinema"
+            )
+
+            # Room selection - updates dynamically when cinema changes
+            selected_room = None
+            if selected_cinema:
+                rooms_df = get_rooms(cinemas[selected_cinema])
+                if not rooms_df.empty:
+                    room_options = [
+                        f"{row['MaPhong']} - {row['TenHienThi']} ({row['LoaiPhong']})"
+                        for _, row in rooms_df.iterrows()
+                    ]
+                    selected_room = st.selectbox(
+                        "🚪 Chọn phòng chiếu", room_options, key="add_room"
+                    )
                 else:
-                    room_id = int(selected_room.split(" - ")[0])
+                    st.warning("Không có phòng chiếu khả dụng")
 
-                    params = {
-                        "MaSuatChieu": new_showtime_id,
-                        "MaPhim": movies[selected_movie],
-                        "MaRap": cinemas[selected_cinema],
-                        "MaPhongChieu": room_id,
-                        "NgayChieu": show_date,
-                        "DinhDangChieu": show_format,
-                        "NgonNgu": show_language,
-                        "TrangThai": show_status,
-                        "HinhThucDichThuat": subtitle_options[show_subtitle],
-                        "GioBatDau": show_time.strftime("%H:%M:%S"),
-                    }
+            show_date = st.date_input(
+                "📅 Ngày chiếu", value=date.today(), key="add_date"
+            )
 
-                    result = execute_procedure("sp_Insert_SuatChieu", params)
-                    if result is not None:
-                        st.success("✅ Thêm suất chiếu mới thành công!")
+        with col2:
+            show_time = st.time_input(
+                "⏰ Giờ bắt đầu", value=time(10, 0), key="add_time"
+            )
+
+            format_options = ["2D", "3D", "IMAX", "4DX", "GOLDCLASS", "STARIUM"]
+            show_format = st.selectbox(
+                "📺 Định dạng chiếu", format_options, key="add_format"
+            )
+
+            language_options = [
+                "Tiếng Việt",
+                "Tiếng Anh",
+                "Tiếng Hàn",
+                "Tiếng Nhật",
+                "Tiếng Trung",
+            ]
+            show_language = st.selectbox(
+                "🌐 Ngôn ngữ", language_options, key="add_language"
+            )
+
+            status_options = ["Mở bán", "Khóa bán"]
+            show_status = st.selectbox(
+                "📊 Trạng thái", status_options, key="add_status"
+            )
+
+            subtitle_options = {"Phụ đề": "PhuDe", "Lồng tiếng": "LongTieng"}
+            show_subtitle = st.selectbox(
+                "💬 Hình thức dịch thuật",
+                list(subtitle_options.keys()),
+                key="add_subtitle",
+            )
+
+        # Submit button outside form
+        if st.button("➕ Thêm suất chiếu", type="primary", use_container_width=True):
+            # Validation
+            if not selected_room:
+                st.error("❌ Vui lòng chọn phòng chiếu")
+            else:
+                room_id = int(selected_room.split(" - ")[0])
+
+                params = {
+                    "MaPhim": movies[selected_movie],
+                    "MaRap": cinemas[selected_cinema],
+                    "MaPhongChieu": room_id,
+                    "NgayChieu": show_date,
+                    "DinhDangChieu": show_format,
+                    "NgonNgu": show_language,
+                    "TrangThai": show_status,
+                    "HinhThucDichThuat": subtitle_options[show_subtitle],
+                    "GioBatDau": show_time.strftime("%H:%M:%S"),
+                }
+
+                result = execute_procedure("sp_Insert_SuatChieu", params)
+                if result is not None:
+                    st.session_state["add_showtime_success_msg"] = (
+                        "✅ Thêm suất chiếu mới thành công!"
+                    )
+                    st.rerun()
 
 
 # =============================================================================
@@ -693,64 +698,123 @@ def page_high_spending_accounts():
 # PAGE: TRIGGER DEMO
 # =============================================================================
 
-# Demo data constants
-DEMO_CUSTOMER_ID = "KH_DEMO_01"
-DEMO_ACCOUNT_ID = "TK_DEMO_001"
-DEMO_TRANSACTION_ID = "GD_DEMO01"
-DEMO_TICKET_ID = "VE_DEMO01"
+# Demo data constants (using unique identifiers for lookup)
+DEMO_EMAIL = "demo_trigger@test.com"
+DEMO_PHONE = "0999999999"
+
+
+def get_demo_customer_id():
+    """Get demo customer ID by email (via TaiKhoanThanhVien)."""
+    res = execute_query(
+        "SELECT MaKhachHang FROM TaiKhoanThanhVien WHERE Email = ?", (DEMO_EMAIL,)
+    )
+    if res is not None and not res.empty:
+        return int(res.iloc[0]["MaKhachHang"])
+    return None
+
+
+def get_demo_account_id():
+    """Get demo account ID."""
+    res = execute_query(
+        "SELECT MaTaiKhoan FROM TaiKhoanThanhVien WHERE Email = ?", (DEMO_EMAIL,)
+    )
+    if res is not None and not res.empty:
+        return int(res.iloc[0]["MaTaiKhoan"])
+    return None
+
+
+def get_demo_transaction_id(customer_id):
+    """Get latest demo transaction ID."""
+    if not customer_id:
+        return None
+    res = execute_query(
+        "SELECT TOP 1 MaGiaoDich FROM GiaoDich WHERE MaKhachHang = ? ORDER BY ThoiDiemBatDau DESC",
+        (customer_id,),
+    )
+    if res is not None and not res.empty:
+        return int(res.iloc[0]["MaGiaoDich"])
+    return None
+
+
+def get_demo_ticket_id(transaction_id):
+    """Get demo ticket ID."""
+    if not transaction_id:
+        return None
+    res = execute_query(
+        "SELECT TOP 1 MaVe FROM Ve WHERE MaGiaoDich = ?", (transaction_id,)
+    )
+    if res is not None and not res.empty:
+        return int(res.iloc[0]["MaVe"])
+    return None
 
 
 def check_demo_data_exists():
     """Check if demo data already exists."""
-    result = execute_query(
-        "SELECT COUNT(*) as cnt FROM KhachHang WHERE MaKhachHang = ?",
-        (DEMO_CUSTOMER_ID,),
-    )
-    if result is not None and not result.empty:
-        return result.iloc[0]["cnt"] > 0
-    return False
+    return get_demo_customer_id() is not None
 
 
 def delete_demo_data():
     """Delete all demo data."""
-    execute_query("DELETE FROM Ve WHERE MaVe = ?", (DEMO_TICKET_ID,), fetch=False)
+    cust_id = get_demo_customer_id()
+    if not cust_id:
+        return
+
+    # Find related records
+    acc_id = get_demo_account_id()
+    trans_id = get_demo_transaction_id(cust_id)
+
+    if trans_id:
+        execute_query("DELETE FROM Ve WHERE MaGiaoDich = ?", (trans_id,), fetch=False)
+        execute_query(
+            "DELETE FROM GiaoDich WHERE MaGiaoDich = ?", (trans_id,), fetch=False
+        )
+
+    if acc_id:
+        execute_query(
+            "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?", (acc_id,), fetch=False
+        )
+
     execute_query(
-        "DELETE FROM GiaoDich WHERE MaGiaoDich = ?", (DEMO_TRANSACTION_ID,), fetch=False
-    )
-    execute_query(
-        "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?",
-        (DEMO_ACCOUNT_ID,),
-        fetch=False,
-    )
-    execute_query(
-        "DELETE FROM KhachHang WHERE MaKhachHang = ?", (DEMO_CUSTOMER_ID,), fetch=False
+        "DELETE FROM KhachHang WHERE MaKhachHang = ?", (cust_id,), fetch=False
     )
 
 
 def get_demo_account_data():
     """Get demo account data as DataFrame."""
+    acc_id = get_demo_account_id()
+    if not acc_id:
+        return None
     return execute_query(
         """SELECT MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, TongChiTieuLuyKe 
            FROM TaiKhoanThanhVien WHERE MaTaiKhoan = ?""",
-        (DEMO_ACCOUNT_ID,),
+        (acc_id,),
     )
 
 
 def get_demo_transaction_data():
     """Get demo transaction data as DataFrame."""
+    cust_id = get_demo_customer_id()
+    trans_id = get_demo_transaction_id(cust_id)
+    if not trans_id:
+        return None
     return execute_query(
         """SELECT MaGiaoDich, MaKhachHang, TrangThai, KenhThanhToan, PhuongThuc 
            FROM GiaoDich WHERE MaGiaoDich = ?""",
-        (DEMO_TRANSACTION_ID,),
+        (trans_id,),
     )
 
 
 def get_demo_ticket_data():
     """Get demo ticket data as DataFrame."""
+    cust_id = get_demo_customer_id()
+    trans_id = get_demo_transaction_id(cust_id)
+    ticket_id = get_demo_ticket_id(trans_id)
+    if not ticket_id:
+        return None
     return execute_query(
         """SELECT MaVe, MaGiaoDich, MaGhe, TrangThai, GiaChuan, GiaSauUuDai 
            FROM Ve WHERE MaVe = ?""",
-        (DEMO_TICKET_ID,),
+        (ticket_id,),
     )
 
 
@@ -795,7 +859,7 @@ def page_trigger_demo():
             
             | Bảng | Mô tả dữ liệu |
             |:-----|:--------------|
-            | `KhachHang` | 1 khách hàng mới (MaKhachHang = `KH_DEMO_01`) |
+            | `KhachHang` | 1 khách hàng mới (Email: `demo_trigger@test.com`) |
             | `TaiKhoanThanhVien` | 1 tài khoản thành viên với **TongChiTieuLuyKe = 0** |
             | `GiaoDich` | 1 giao dịch với trạng thái **'Tạm giữ'** (chưa thanh toán) |
             | `Ve` | 1 vé với giá **150,000 VNĐ** |
@@ -821,58 +885,73 @@ def page_trigger_demo():
                         # Create demo customer
                         execute_query(
                             """
-                            INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang) 
-                            VALUES (?, N'Demo User - Trigger Test', N'Thành viên')
+                            INSERT INTO KhachHang (HoTen, LoaiKhachHang) 
+                            VALUES (N'Demo User - Trigger Test', N'Thành viên')
                         """,
-                            (DEMO_CUSTOMER_ID,),
                             fetch=False,
                         )
 
-                        # Create demo account with 0 spending
-                        execute_query(
-                            """
-                            INSERT INTO TaiKhoanThanhVien 
-                            (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
-                             SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
-                            VALUES (?, ?, 'demo_trigger_user', 'Member', '1990-01-01', N'Nam', 
-                                    '0999999999', 'demo_trigger@test.com', N'CGV Demo', 0, 1)
-                        """,
-                            (DEMO_ACCOUNT_ID, DEMO_CUSTOMER_ID),
-                            fetch=False,
+                        # Get the newly created customer ID
+                        cust_res = execute_query(
+                            "SELECT TOP 1 MaKhachHang FROM KhachHang WHERE HoTen = N'Demo User - Trigger Test' ORDER BY MaKhachHang DESC"
+                        )
+                        cust_id = (
+                            int(cust_res.iloc[0]["MaKhachHang"])
+                            if cust_res is not None and not cust_res.empty
+                            else None
                         )
 
-                        # Create demo transaction with status 'Tạm giữ'
-                        execute_query(
-                            """
-                            INSERT INTO GiaoDich 
-                            (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
-                             KenhThanhToan, TrangThai, PhuongThuc)
-                            VALUES (?, ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Offline')
-                        """,
-                            (DEMO_TRANSACTION_ID, DEMO_CUSTOMER_ID),
-                            fetch=False,
-                        )
+                        if cust_id is None:
+                            st.error("❌ Không thể tạo khách hàng demo!")
+                        else:
+                            # Create demo account with 0 spending
+                            execute_query(
+                                """
+                                INSERT INTO TaiKhoanThanhVien 
+                                (MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                                 SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
+                                VALUES (?, 'demo_trigger_user', 'Member', '1990-01-01', N'Nam', 
+                                        ?, ?, N'CGV Demo', 0, 1)
+                            """,
+                                (cust_id, DEMO_PHONE, DEMO_EMAIL),
+                                fetch=False,
+                            )
 
-                        # Create demo ticket worth 150,000 VND
-                        execute_query(
-                            """
-                            INSERT INTO Ve 
-                            (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
-                             MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
-                            VALUES (?, ?, N'Tạm giữ', 150000, 150000, 0, ?, ?, ?, GETDATE())
-                        """,
-                            (
-                                DEMO_TICKET_ID,
-                                sc["MaGhe"],
-                                DEMO_TRANSACTION_ID,
-                                sc["MaPhim"],
-                                sc["MaSuatChieu"],
-                            ),
-                            fetch=False,
-                        )
+                            # Create demo transaction with status 'Tạm giữ'
+                            execute_query(
+                                """
+                                INSERT INTO GiaoDich 
+                                (MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                 KenhThanhToan, TrangThai, PhuongThuc)
+                                VALUES (?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Offline')
+                            """,
+                                (cust_id,),
+                                fetch=False,
+                            )
 
-                        st.success("✅ Đã INSERT dữ liệu demo thành công!")
-                        st.rerun()
+                            trans_id = get_demo_transaction_id(cust_id)
+                            # Convert trans_id to native Python int
+                            trans_id = int(trans_id) if trans_id is not None else None
+
+                            # Create demo ticket worth 150,000 VND
+                            execute_query(
+                                """
+                                INSERT INTO Ve 
+                                (MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                 MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                VALUES (?, N'Tạm giữ', 150000, 150000, 0, ?, ?, ?, GETDATE())
+                            """,
+                                (
+                                    str(sc["MaGhe"]),
+                                    trans_id,
+                                    int(sc["MaPhim"]),
+                                    int(sc["MaSuatChieu"]),
+                                ),
+                                fetch=False,
+                            )
+
+                            st.success("✅ Đã INSERT dữ liệu demo thành công!")
+                            st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ Lỗi khi tạo dữ liệu demo: {e}")
@@ -883,6 +962,9 @@ def page_trigger_demo():
         if demo_exists:
             st.divider()
             st.markdown("### 🧪 Bước 2: Demo Trigger")
+
+            cust_id = get_demo_customer_id()
+            trans_id = get_demo_transaction_id(cust_id)
 
             # --- Query buttons ---
             st.markdown("#### 🔍 Truy vấn dữ liệu hiện tại")
@@ -951,12 +1033,12 @@ def page_trigger_demo():
             col1, col2 = st.columns(2)
 
             with col1:
-                st.markdown("""
+                st.markdown(f"""
                 **Thanh toán giao dịch:**
                 ```sql
                 UPDATE GiaoDich 
                 SET TrangThai = N'Đã thanh toán' 
-                WHERE MaGiaoDich = 'GD_DEMO01'
+                WHERE MaGiaoDich = {trans_id}
                 ```
                 *Kỳ vọng: Trigger sẽ **cộng** 150,000 VNĐ vào `TongChiTieuLuyKe`*
                 """)
@@ -968,7 +1050,7 @@ def page_trigger_demo():
                     ):
                         execute_query(
                             "UPDATE GiaoDich SET TrangThai = N'Đã thanh toán' WHERE MaGiaoDich = ?",
-                            (DEMO_TRANSACTION_ID,),
+                            (trans_id,),
                             fetch=False,
                         )
                         st.success("✅ UPDATE thành công! Trigger đã được kích hoạt.")
@@ -981,12 +1063,12 @@ def page_trigger_demo():
                     st.warning(f"⚠️ Trạng thái hiện tại: {current_status}")
 
             with col2:
-                st.markdown("""
+                st.markdown(f"""
                 **Hủy giao dịch (hoàn tiền):**
                 ```sql
                 UPDATE GiaoDich 
                 SET TrangThai = N'Hủy' 
-                WHERE MaGiaoDich = 'GD_DEMO01'
+                WHERE MaGiaoDich = {trans_id}
                 ```
                 *Kỳ vọng: Trigger sẽ **trừ** 150,000 VNĐ khỏi `TongChiTieuLuyKe`*
                 """)
@@ -996,7 +1078,7 @@ def page_trigger_demo():
                     ):
                         execute_query(
                             "UPDATE GiaoDich SET TrangThai = N'Hủy' WHERE MaGiaoDich = ?",
-                            (DEMO_TRANSACTION_ID,),
+                            (trans_id,),
                             fetch=False,
                         )
                         st.success("✅ UPDATE thành công! Trigger đã được kích hoạt.")
@@ -1044,7 +1126,7 @@ BEGIN
     IF NOT UPDATE(TrangThai) RETURN;
 
     DECLARE @Adjustments TABLE (
-        MaTaiKhoan CHAR(12),
+        MaTaiKhoan INT,
         AdjustmentAmount DECIMAL(18, 2)
     );
 
@@ -1096,38 +1178,80 @@ END
         st.divider()
 
         # Demo constants for age check trigger
-        # Constraints: MaPhim=CHAR(10), MaRap=CHAR(5), MaKhachHang=CHAR(11), MaTaiKhoan=CHAR(12), MaGiaoDich=CHAR(9)
-        AGE_DEMO_MOVIE_ID = "PHIM_AGE01"  # 10 chars
-        AGE_DEMO_RAP_ID = "RAPAG"  # 5 chars
-        AGE_DEMO_ADULT_KH = "KH_ADULT_01"  # 11 chars
-        AGE_DEMO_ADULT_TK = "TK_ADULT_001"  # 12 chars
-        AGE_DEMO_MINOR_KH = "KH_MINOR_01"  # 11 chars
-        AGE_DEMO_MINOR_TK = "TK_MINOR_001"  # 12 chars
+        AGE_DEMO_MOVIE_TITLE = "Phim Demo 18+ (T18)"
+        AGE_DEMO_RAP_ID = "RAPAG"
+        AGE_DEMO_ADULT_EMAIL = "adult@demo.com"
+        AGE_DEMO_MINOR_EMAIL = "minor@demo.com"
+
+        def get_age_demo_movie_id():
+            res = execute_query(
+                "SELECT MaPhim FROM Phim WHERE TuaDe = ?", (AGE_DEMO_MOVIE_TITLE,)
+            )
+            if res is not None and not res.empty:
+                return int(res.iloc[0]["MaPhim"])
+            return None
+
+        def get_age_demo_customer_id(email):
+            res = execute_query(
+                "SELECT MaKhachHang FROM TaiKhoanThanhVien WHERE Email = ?", (email,)
+            )
+            if res is not None and not res.empty:
+                return int(res.iloc[0]["MaKhachHang"])
+            return None
 
         def check_age_demo_exists():
-            result = execute_query(
-                "SELECT COUNT(*) as cnt FROM Phim WHERE MaPhim = ?",
-                (AGE_DEMO_MOVIE_ID,),
-            )
-            if result is not None and not result.empty:
-                return result.iloc[0]["cnt"] > 0
-            return False
+            return get_age_demo_movie_id() is not None
 
         def delete_age_demo_data():
-            # Delete in reverse order of dependencies
-            execute_query(
-                "DELETE FROM Ve WHERE MaPhim = ?", (AGE_DEMO_MOVIE_ID,), fetch=False
-            )
-            execute_query(
-                "DELETE FROM GiaoDich WHERE MaKhachHang IN (?, ?)",
-                (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
-                fetch=False,
-            )
-            execute_query(
-                "DELETE FROM SuatChieu WHERE MaPhim = ?",
-                (AGE_DEMO_MOVIE_ID,),
-                fetch=False,
-            )
+            movie_id = get_age_demo_movie_id()
+            adult_id = get_age_demo_customer_id(AGE_DEMO_ADULT_EMAIL)
+            minor_id = get_age_demo_customer_id(AGE_DEMO_MINOR_EMAIL)
+
+            if movie_id:
+                execute_query(
+                    "DELETE FROM Ve WHERE MaPhim = ?", (movie_id,), fetch=False
+                )
+                execute_query(
+                    "DELETE FROM SuatChieu WHERE MaPhim = ?", (movie_id,), fetch=False
+                )
+                execute_query(
+                    "DELETE FROM Phim WHERE MaPhim = ?", (movie_id,), fetch=False
+                )
+
+            if adult_id:
+                execute_query(
+                    "DELETE FROM GiaoDich WHERE MaKhachHang = ?",
+                    (adult_id,),
+                    fetch=False,
+                )
+                execute_query(
+                    "DELETE FROM TaiKhoanThanhVien WHERE MaKhachHang = ?",
+                    (adult_id,),
+                    fetch=False,
+                )
+                execute_query(
+                    "DELETE FROM KhachHang WHERE MaKhachHang = ?",
+                    (adult_id,),
+                    fetch=False,
+                )
+
+            if minor_id:
+                execute_query(
+                    "DELETE FROM GiaoDich WHERE MaKhachHang = ?",
+                    (minor_id,),
+                    fetch=False,
+                )
+                execute_query(
+                    "DELETE FROM TaiKhoanThanhVien WHERE MaKhachHang = ?",
+                    (minor_id,),
+                    fetch=False,
+                )
+                execute_query(
+                    "DELETE FROM KhachHang WHERE MaKhachHang = ?",
+                    (minor_id,),
+                    fetch=False,
+                )
+
             execute_query(
                 "DELETE FROM Ghe WHERE MaRap = ?", (AGE_DEMO_RAP_ID,), fetch=False
             )
@@ -1137,21 +1261,8 @@ END
                 fetch=False,
             )
             execute_query(
-                "DELETE FROM Phim WHERE MaPhim = ?", (AGE_DEMO_MOVIE_ID,), fetch=False
-            )
-            execute_query(
                 "DELETE FROM RapChieuPhim WHERE MaRap = ?",
                 (AGE_DEMO_RAP_ID,),
-                fetch=False,
-            )
-            execute_query(
-                "DELETE FROM TaiKhoanThanhVien WHERE MaTaiKhoan IN (?, ?)",
-                (AGE_DEMO_ADULT_TK, AGE_DEMO_MINOR_TK),
-                fetch=False,
-            )
-            execute_query(
-                "DELETE FROM KhachHang WHERE MaKhachHang IN (?, ?)",
-                (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
                 fetch=False,
             )
 
@@ -1190,21 +1301,22 @@ END
                     # Create 18+ movie
                     execute_query(
                         """
-                        INSERT INTO Phim (MaPhim, TuaDe, GioiHanDoTuoi, ThoiLuong, TrangThaiPhatHanh, NgayKhoiChieu_ChinhThuc)
-                        VALUES (?, N'Phim Demo 18+ (T18)', 18, '02:00:00', N'Đang chiếu', '2025-01-01')
+                        INSERT INTO Phim (TuaDe, GioiHanDoTuoi, ThoiLuong, TrangThaiPhatHanh, NgayKhoiChieu_ChinhThuc)
+                        VALUES (?, 18, '02:00:00', N'Đang chiếu', '2025-01-01')
                     """,
-                        (AGE_DEMO_MOVIE_ID,),
+                        (AGE_DEMO_MOVIE_TITLE,),
                         fetch=False,
                     )
+
+                    movie_id = get_age_demo_movie_id()
 
                     # Create demo cinema
                     execute_query(
                         """
                         INSERT INTO RapChieuPhim (MaRap, TenRap, DiaChi_ChiTiet, TinhThanh, NgayKhaiTruong, 
-                                                   ThoiGianMoCua, ThoiGianDongCua, MoTaTongQuan, TrangThaiHoatDong, 
-                                                   SoSuatChieu_MotNgay, TyLeLapDay)
+                                                   ThoiGianMoCua, ThoiGianDongCua, MoTaTongQuan, TrangThaiHoatDong)
                         VALUES (?, 'CGV Demo Age Check', N'123 Demo Street', 'TP.HCM', '2020-01-01', 
-                                '08:00', '23:59', 'Demo Cinema', N'Hoạt động', 50, 0.7)
+                                '08:00', '23:59', 'Demo Cinema', N'Hoạt động')
                     """,
                         (AGE_DEMO_RAP_ID,),
                         fetch=False,
@@ -1238,57 +1350,75 @@ END
                         fetch=False,
                     )
 
-                    # Create showtime for tomorrow (MaSuatChieu = CHAR(7))
+                    # Create showtime for tomorrow
                     execute_query(
                         """
-                        INSERT INTO SuatChieu (MaSuatChieu, MaPhim, MaRap, MaPhongChieu, NgayChieu, 
+                        INSERT INTO SuatChieu (MaPhim, MaRap, MaPhongChieu, NgayChieu, 
                                                DinhDangChieu, NgonNgu, TrangThai, HinhThucDichThuat, GioBatDau)
-                        VALUES ('SC_AG01', ?, ?, 1, DATEADD(DAY, 1, CAST(GETDATE() AS DATE)), 
+                        VALUES (?, ?, 1, DATEADD(DAY, 1, CAST(GETDATE() AS DATE)), 
                                 '2D', N'Anh', N'Mở bán', 'PhuDe', '21:00:00')
                     """,
-                        (AGE_DEMO_MOVIE_ID, AGE_DEMO_RAP_ID),
+                        (movie_id, AGE_DEMO_RAP_ID),
                         fetch=False,
                     )
 
                     # Create adult customer (35 years old, born 1990)
                     execute_query(
                         """
-                        INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang)
-                        VALUES (?, N'Nguyễn Văn A', N'Thành viên')
+                        INSERT INTO KhachHang (HoTen, LoaiKhachHang)
+                        VALUES (N'Nguyễn Văn A', N'Thành viên')
                     """,
-                        (AGE_DEMO_ADULT_KH,),
                         fetch=False,
                     )
+                    # Get the newly created customer ID
+                    adult_res = execute_query(
+                        "SELECT TOP 1 MaKhachHang FROM KhachHang WHERE HoTen = N'Nguyễn Văn A' ORDER BY MaKhachHang DESC"
+                    )
+                    adult_id = (
+                        int(adult_res.iloc[0]["MaKhachHang"])
+                        if adult_res is not None and not adult_res.empty
+                        else None
+                    )
+
                     execute_query(
                         """
                         INSERT INTO TaiKhoanThanhVien 
-                        (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                        (MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
                          SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
-                        VALUES (?, ?, 'adult_demo_user', 'VIP', '1990-01-15', N'Nam', 
-                                '0911111111', 'adult@demo.com', N'CGV Demo', 0, 1)
+                        VALUES (?, 'adult_demo_user', 'VIP', '1990-01-15', N'Nam', 
+                                '0911111111', ?, N'CGV Demo', 0, 1)
                     """,
-                        (AGE_DEMO_ADULT_TK, AGE_DEMO_ADULT_KH),
+                        (adult_id, AGE_DEMO_ADULT_EMAIL),
                         fetch=False,
                     )
 
                     # Create minor customer (15 years old, born 2010)
                     execute_query(
                         """
-                        INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang)
-                        VALUES (?, N'Trần Thị B', N'Thành viên')
+                        INSERT INTO KhachHang (HoTen, LoaiKhachHang)
+                        VALUES (N'Trần Thị B', N'Thành viên')
                     """,
-                        (AGE_DEMO_MINOR_KH,),
                         fetch=False,
                     )
+                    # Get the newly created customer ID
+                    minor_res = execute_query(
+                        "SELECT TOP 1 MaKhachHang FROM KhachHang WHERE HoTen = N'Trần Thị B' ORDER BY MaKhachHang DESC"
+                    )
+                    minor_id = (
+                        int(minor_res.iloc[0]["MaKhachHang"])
+                        if minor_res is not None and not minor_res.empty
+                        else None
+                    )
+
                     execute_query(
                         """
                         INSERT INTO TaiKhoanThanhVien 
-                        (MaTaiKhoan, MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
+                        (MaKhachHang, TenDangNhap, CapDoTaiKhoan, NgaySinh, GioiTinh, 
                          SoDienThoai, Email, RapYeuThich, TongChiTieuLuyKe, TrangThaiHoatDong)
-                        VALUES (?, ?, 'minor_demo_user', 'Member', '2010-06-20', N'Nữ', 
-                                '0922222222', 'minor@demo.com', N'CGV Demo', 0, 1)
+                        VALUES (?, 'minor_demo_user', 'Member', '2010-06-20', N'Nữ', 
+                                '0922222222', ?, N'CGV Demo', 0, 1)
                     """,
-                        (AGE_DEMO_MINOR_TK, AGE_DEMO_MINOR_KH),
+                        (minor_id, AGE_DEMO_MINOR_EMAIL),
                         fetch=False,
                     )
 
@@ -1304,6 +1434,20 @@ END
         if age_demo_exists:
             st.divider()
             st.markdown("### 🧪 Bước 2: Demo Trigger")
+
+            movie_id = get_age_demo_movie_id()
+            adult_id = get_age_demo_customer_id(AGE_DEMO_ADULT_EMAIL)
+            minor_id = get_age_demo_customer_id(AGE_DEMO_MINOR_EMAIL)
+
+            # Get showtime ID
+            sc_res = execute_query(
+                "SELECT TOP 1 MaSuatChieu FROM SuatChieu WHERE MaPhim = ?", (movie_id,)
+            )
+            sc_id = (
+                int(sc_res.iloc[0]["MaSuatChieu"])
+                if sc_res is not None and not sc_res.empty
+                else None
+            )
 
             # --- Query buttons ---
             st.markdown("#### 🔍 Truy vấn dữ liệu hiện tại")
@@ -1330,7 +1474,7 @@ END
                     SELECT MaPhim, TuaDe, GioiHanDoTuoi, TrangThaiPhatHanh
                     FROM Phim WHERE MaPhim = ?
                 """,
-                    (AGE_DEMO_MOVIE_ID,),
+                    (movie_id,),
                 )
                 if movie_df is not None and not movie_df.empty:
                     st.dataframe(movie_df, use_container_width=True, hide_index=True)
@@ -1348,7 +1492,7 @@ END
                     JOIN TaiKhoanThanhVien tk ON kh.MaKhachHang = tk.MaKhachHang
                     WHERE kh.MaKhachHang IN (?, ?)
                 """,
-                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                    (adult_id, minor_id),
                 )
                 if customers_df is not None and not customers_df.empty:
                     st.dataframe(
@@ -1360,13 +1504,30 @@ END
             # --- INSERT buttons ---
             st.markdown("#### ⚡ Thực hiện INSERT để kích hoạt Trigger")
 
+            # Display persisted messages from session state
+            if st.session_state.get("age_adult_success_msg"):
+                st.success(st.session_state["age_adult_success_msg"])
+                del st.session_state["age_adult_success_msg"]
+            if st.session_state.get("age_minor_warning_msg"):
+                st.warning(st.session_state["age_minor_warning_msg"])
+                del st.session_state["age_minor_warning_msg"]
+            if st.session_state.get("age_minor_error_msg"):
+                st.error(st.session_state["age_minor_error_msg"])
+                del st.session_state["age_minor_error_msg"]
+            if st.session_state.get("age_minor_info_msg"):
+                st.info(st.session_state["age_minor_info_msg"])
+                del st.session_state["age_minor_info_msg"]
+            if st.session_state.get("age_minor_success_msg"):
+                st.success(st.session_state["age_minor_success_msg"])
+                del st.session_state["age_minor_success_msg"]
+
             col1, col2 = st.columns(2)
 
             with col1:
                 st.markdown("""
                 **🧑 Mua vé cho khách hàng 35 tuổi:**
                 ```sql
-                INSERT INTO GiaoDich (...) -- MaKhachHang = 'KH_ADULT_01'
+                INSERT INTO GiaoDich (...) 
                 INSERT INTO Ve (...) -- Vé phim T18
                 ```
                 *Kỳ vọng: ✅ INSERT **THÀNH CÔNG** (đủ 18 tuổi)*
@@ -1379,7 +1540,7 @@ END
                     JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
                     WHERE gd.MaKhachHang = ? AND v.MaPhim = ?
                 """,
-                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MOVIE_ID),
+                    (adult_id, movie_id),
                 )
                 adult_exists = (
                     adult_ticket is not None
@@ -1397,28 +1558,45 @@ END
                     ):
                         try:
                             # Execute both INSERTs in a single transaction
-                            queries = [
-                                (
-                                    """
-                                    INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
-                                                          KenhThanhToan, TrangThai, PhuongThuc)
-                                    VALUES ('GD_ADT_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
-                                """,
-                                    (AGE_DEMO_ADULT_KH,),
-                                ),
-                                (
-                                    """
-                                    INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
-                                                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
-                                    VALUES ('VE_ADT_01', 'A1', N'Tạm giữ', 100000, 100000, 0, 
-                                            'GD_ADT_01', ?, 'SC_AG01', GETDATE())
-                                """,
-                                    (AGE_DEMO_MOVIE_ID,),
-                                ),
-                            ]
-                            execute_transaction(queries)
+                            # Note: We need to get the generated GiaoDich ID to insert into Ve
+                            # Since we can't easily do that in one batch with pyodbc without stored proc,
+                            # we will insert GiaoDich, get ID, then insert Ve.
+                            # BUT, if we do that separately, the trigger on Ve won't rollback GiaoDich automatically unless we use a transaction.
 
-                            st.success(
+                            # We will use a stored procedure or a single batch script for atomicity
+
+                            sql_script = """
+                            BEGIN TRANSACTION;
+                            BEGIN TRY
+                                DECLARE @NewTransID INT;
+                                
+                                INSERT INTO GiaoDich (MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                      KenhThanhToan, TrangThai, PhuongThuc)
+                                VALUES (?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online');
+                                
+                                SET @NewTransID = SCOPE_IDENTITY();
+                                
+                                INSERT INTO Ve (MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                VALUES ('A1', N'Tạm giữ', 100000, 100000, 0, 
+                                        @NewTransID, ?, ?, GETDATE());
+                                        
+                                COMMIT TRANSACTION;
+                            END TRY
+                            BEGIN CATCH
+                                ROLLBACK TRANSACTION;
+                                THROW;
+                            END CATCH
+                            """
+
+                            execute_query(
+                                sql_script,
+                                (adult_id, movie_id, sc_id),
+                                fetch=False,
+                                raise_on_error=True,
+                            )
+
+                            st.session_state["age_adult_success_msg"] = (
                                 "✅ INSERT thành công! Khách hàng 35 tuổi ĐỦ TUỔI xem phim T18."
                             )
                             st.rerun()
@@ -1430,7 +1608,7 @@ END
                 st.markdown("""
                 **👶 Mua vé cho khách hàng 15 tuổi:**
                 ```sql
-                INSERT INTO GiaoDich (...) -- MaKhachHang = 'KH_MINOR_01'
+                INSERT INTO GiaoDich (...) 
                 INSERT INTO Ve (...) -- Vé phim T18
                 ```
                 *Kỳ vọng: ❌ INSERT **THẤT BẠI** + ROLLBACK (chưa đủ 18 tuổi)*
@@ -1443,7 +1621,7 @@ END
                     JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
                     WHERE gd.MaKhachHang = ? AND v.MaPhim = ?
                 """,
-                    (AGE_DEMO_MINOR_KH, AGE_DEMO_MOVIE_ID),
+                    (minor_id, movie_id),
                 )
                 minor_exists = (
                     minor_ticket is not None
@@ -1460,30 +1638,38 @@ END
                         key="buy_minor",
                     ):
                         try:
-                            # Execute both INSERTs in a single transaction
-                            # When trigger fires ROLLBACK, both GiaoDich and Ve will be rolled back
-                            queries = [
-                                (
-                                    """
-                                    INSERT INTO GiaoDich (MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
-                                                          KenhThanhToan, TrangThai, PhuongThuc)
-                                    VALUES ('GD_MNR_01', ?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online')
-                                """,
-                                    (AGE_DEMO_MINOR_KH,),
-                                ),
-                                (
-                                    """
-                                    INSERT INTO Ve (MaVe, MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
-                                                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
-                                    VALUES ('VE_MNR_01', 'A2', N'Tạm giữ', 100000, 100000, 0, 
-                                            'GD_MNR_01', ?, 'SC_AG01', GETDATE())
-                                """,
-                                    (AGE_DEMO_MOVIE_ID,),
-                                ),
-                            ]
-                            execute_transaction(queries)
+                            sql_script = """
+                            BEGIN TRANSACTION;
+                            BEGIN TRY
+                                DECLARE @NewTransID INT;
+                                
+                                INSERT INTO GiaoDich (MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, 
+                                                      KenhThanhToan, TrangThai, PhuongThuc)
+                                VALUES (?, GETDATE(), GETDATE(), N'Tiền mặt', N'Tạm giữ', 'Online');
+                                
+                                SET @NewTransID = SCOPE_IDENTITY();
+                                
+                                INSERT INTO Ve (MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                                                MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+                                VALUES ('A2', N'Tạm giữ', 100000, 100000, 0, 
+                                        @NewTransID, ?, ?, GETDATE());
+                                        
+                                COMMIT TRANSACTION;
+                            END TRY
+                            BEGIN CATCH
+                                ROLLBACK TRANSACTION;
+                                THROW;
+                            END CATCH
+                            """
 
-                            st.warning(
+                            execute_query(
+                                sql_script,
+                                (minor_id, movie_id, sc_id),
+                                fetch=False,
+                                raise_on_error=True,
+                            )
+
+                            st.session_state["age_minor_warning_msg"] = (
                                 "⚠️ INSERT thành công? Trigger có thể không hoạt động đúng."
                             )
                             st.rerun()
@@ -1495,11 +1681,16 @@ END
                                 or "age" in error_msg.lower()
                                 or "50001" in error_msg
                             ):
-                                st.error("🔥 **TRIGGER ĐÃ CHẶN GIAO DỊCH!**")
-                                st.info(f"Lỗi từ trigger: `{error_msg}`")
-                                st.success(
+                                st.session_state["age_minor_error_msg"] = (
+                                    "🔥 **TRIGGER ĐÃ CHẶN GIAO DỊCH!**"
+                                )
+                                st.session_state["age_minor_info_msg"] = (
+                                    f"Lỗi từ trigger: `{error_msg}`"
+                                )
+                                st.session_state["age_minor_success_msg"] = (
                                     "✅ Đây là kết quả mong đợi - khách hàng 15 tuổi KHÔNG được mua vé phim T18!"
                                 )
+                                st.rerun()
                             else:
                                 st.error(f"❌ Lỗi: {e}")
 
@@ -1518,7 +1709,7 @@ END
                     WHERE gd.MaKhachHang IN (?, ?)
                     ORDER BY gd.ThoiDiemBatDau DESC
                 """,
-                    (AGE_DEMO_ADULT_KH, AGE_DEMO_MINOR_KH),
+                    (adult_id, minor_id),
                 )
 
                 if transactions_df is not None and not transactions_df.empty:
@@ -1538,35 +1729,13 @@ END
                     JOIN KhachHang kh ON gd.MaKhachHang = kh.MaKhachHang
                     WHERE v.MaPhim = ?
                 """,
-                    (AGE_DEMO_MOVIE_ID,),
+                    (movie_id,),
                 )
 
                 if tickets_df is not None and not tickets_df.empty:
                     st.dataframe(tickets_df, use_container_width=True, hide_index=True)
                 else:
                     st.info("Chưa có vé nào được mua.")
-
-                # Summary
-                tx_count = (
-                    len(transactions_df)
-                    if transactions_df is not None and not transactions_df.empty
-                    else 0
-                )
-                ve_count = (
-                    len(tickets_df)
-                    if tickets_df is not None and not tickets_df.empty
-                    else 0
-                )
-
-                if tx_count > 0 or ve_count > 0:
-                    st.info(f"""
-                    **Kết quả:** {tx_count} giao dịch, {ve_count} vé.
-                    
-                    Nếu trigger hoạt động đúng:
-                    - Chỉ có **1 giao dịch** (của khách hàng 35 tuổi)
-                    - Chỉ có **1 vé** (của khách hàng 35 tuổi)
-                    - Giao dịch + vé của khách hàng 15 tuổi đã bị **ROLLBACK** hoàn toàn
-                    """)
 
             # =================================================================
             # STEP 3: CLEANUP
@@ -1599,24 +1768,36 @@ END
                 """
 CREATE TRIGGER trg_CheckTuoiXemPhim
 ON Ve
-AFTER INSERT, UPDATE
+INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- Check if any inserted ticket violates age restriction
     IF EXISTS (
         SELECT 1
         FROM inserted i
         JOIN GiaoDich gd ON i.MaGiaoDich = gd.MaGiaoDich
-        JOIN TaiKhoanThanhVien tk ON gd.MaKhachHang = tk.MaKhachHang
-        JOIN Phim p ON i.MaPhim = p.MaPhim
-        JOIN SuatChieu sc ON i.MaSuatChieu = sc.MaSuatChieu
-        WHERE DATEADD(YEAR, p.GioiHanDoTuoi, tk.NgaySinh) > sc.NgayChieu
+        JOIN SuatChieu sc ON i.MaSuatChieu = sc.MaSuatChieu AND i.MaPhim = sc.MaPhim
+        JOIN Phim p ON sc.MaPhim = p.MaPhim
+        LEFT JOIN TaiKhoanThanhVien tk ON gd.MaKhachHang = tk.MaKhachHang
+        
+        WHERE 
+            tk.NgaySinh IS NOT NULL 
+            AND
+            DATEADD(YEAR, p.GioiHanDoTuoi, tk.NgaySinh) > sc.NgayChieu
     )
     BEGIN
-        RAISERROR (N'Có khách hàng thành viên chưa đủ tuổi xem phim này!', 16, 1);
-        ROLLBACK TRANSACTION;
-    END
+        -- Use THROW to propagate error to the caller's TRY/CATCH
+        ;THROW 50001, N'LỖI: Không thể thêm vé. Có ít nhất một khách hàng thành viên không đủ tuổi xem phim này.', 1;
+    END;
+
+    -- If age check passes, perform the actual insert
+    INSERT INTO Ve (MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+    SELECT MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+           MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe
+    FROM inserted;
 END
             """,
                 language="sql",

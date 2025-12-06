@@ -5,7 +5,7 @@ USE Movie;
 GO
 
 CREATE TABLE KhachHang (
-    MaKhachHang CHAR(11) NOT NULL,
+    MaKhachHang INT IDENTITY(1,1) NOT NULL,
     HoTen NVARCHAR(50) NOT NULL,
     LoaiKhachHang NVARCHAR(50),
 
@@ -15,13 +15,13 @@ CREATE TABLE KhachHang (
 GO
 
 CREATE TABLE TaiKhoanThanhVien (
-    MaTaiKhoan CHAR(12) NOT NULL,
+    MaTaiKhoan INT IDENTITY(1,1) NOT NULL,
     TrangThaiHoatDong BIT NOT NULL DEFAULT 1,
     TenDangNhap VARCHAR(50) NOT NULL,
     CapDoTaiKhoan NVARCHAR(20),
     TongChiTieuLuyKe DECIMAL(18, 2) DEFAULT 0,
     
-    MaKhachHang CHAR(11) NOT NULL,
+    MaKhachHang INT NOT NULL,
     
     RapYeuThich NVARCHAR(100) NOT NULL,
     SoDienThoai CHAR(10) NOT NULL,
@@ -42,8 +42,8 @@ CREATE TABLE TaiKhoanThanhVien (
 GO
 
 CREATE TABLE GiaoDich(
-    MaGiaoDich CHAR(9) NOT NULL,
-    MaKhachHang CHAR(11) NOT NULL,
+    MaGiaoDich INT IDENTITY(1,1) NOT NULL,
+    MaKhachHang INT NOT NULL,
     ThoiDiemBatDau DATETIME NOT NULL,
     ThoiDiemKetThuc DATETIME NOT NULL,
     KenhThanhToan NVARCHAR(30) NOT NULL, 
@@ -69,8 +69,6 @@ CREATE TABLE RapChieuPhim (
     ThoiGianDongCua TIME NOT NULL,
     MoTaTongQuan NVARCHAR(200) NOT NULL,
     TrangThaiHoatDong NVARCHAR(20) NOT NULL,
-    SoSuatChieu_MotNgay INT NOT NULL,
-    TyLeLapDay DECIMAL(3,2) NOT NULL,
 
     PRIMARY KEY (MaRap),
     CHECK (TrangThaiHoatDong IN (N'Hoạt động', N'Bảo trì', N'Ngưng hoạt động'))
@@ -78,7 +76,7 @@ CREATE TABLE RapChieuPhim (
 GO
 
 CREATE TABLE Phim(
-    MaPhim CHAR(10) NOT NULL,
+    MaPhim INT IDENTITY(1,1) NOT NULL,
     NamSanXuat SMALLINT,
     ThoiLuong TIME NOT NULL,
     MoTaTomTat NVARCHAR(4000),
@@ -123,8 +121,8 @@ CREATE TABLE PhongChieu (
 GO
 
 CREATE TABLE SuatChieu (
-    MaSuatChieu CHAR(7),
-    MaPhim CHAR(10),
+    MaSuatChieu INT IDENTITY(1,1) NOT NULL,
+    MaPhim INT,
     MaRap CHAR(5) NOT NULL,
     MaPhongChieu TINYINT NOT NULL,
     NgayChieu DATE NOT NULL,
@@ -134,7 +132,7 @@ CREATE TABLE SuatChieu (
     HinhThucDichThuat NVARCHAR(10) NOT NULL,
     GioBatDau TIME NOT NULL,
 
-    PRIMARY KEY (MaSuatChieu, MaPhim),
+    PRIMARY KEY (MaSuatChieu),
     CHECK (MaPhongChieu > 0),
     CHECK (TrangThai IN (N'Mở bán', N'Khóa bán', N'Đã chiếu', N'Hủy')),
     CHECK (HinhThucDichThuat IN ('PhuDe','LongTieng')),
@@ -161,16 +159,16 @@ CREATE TABLE Ghe (
 GO
 
 CREATE TABLE Ve (
-    MaVe CHAR(9) NOT NULL,
+    MaVe INT IDENTITY(1,1) NOT NULL,
     MaGhe NVARCHAR(7) NOT NULL,
     TrangThai NVARCHAR(20) NOT NULL,
     PhuThu DECIMAL(18, 2) DEFAULT 0,
     GiaChuan DECIMAL(18, 2) NOT NULL,
     GiaSauUuDai DECIMAL(18, 2) NOT NULL,
     
-    MaGiaoDich CHAR(9) NOT NULL,
-    MaPhim CHAR(10) NOT NULL,
-    MaSuatChieu CHAR(7),
+    MaGiaoDich INT NOT NULL,
+    MaPhim INT NOT NULL,
+    MaSuatChieu INT,
     ThoiDiemXuatVe DATETIME NOT NULL DEFAULT GETDATE(),
 
     PRIMARY KEY (MaVe),
@@ -183,7 +181,7 @@ CREATE TABLE Ve (
         FOREIGN KEY (MaPhim) REFERENCES Phim(MaPhim),
     
     CONSTRAINT FK_Ve_SuatChieu
-        FOREIGN KEY (MaSuatChieu, MaPhim) REFERENCES SuatChieu(MaSuatChieu, MaPhim)
+        FOREIGN KEY (MaSuatChieu) REFERENCES SuatChieu(MaSuatChieu)
 );
 GO
 
@@ -193,7 +191,7 @@ CREATE TABLE TheThanhVien (
     TrangThai BIT NOT NULL DEFAULT 1, 
     LaTheChinh BIT NOT NULL DEFAULT 1,
     
-    MaTaiKhoan CHAR(12) NOT NULL,
+    MaTaiKhoan INT NOT NULL,
     
     PRIMARY KEY (MaSoThe),
     CHECK (MaSoThe NOT LIKE '%[^0-9]%'),
@@ -203,11 +201,11 @@ CREATE TABLE TheThanhVien (
 GO
 
 CREATE TABLE DiemThuong(
-    MaDiemThuong CHAR(9) NOT NULL,
+    MaDiemThuong INT IDENTITY(1,1) NOT NULL,
     SoLuong SMALLINT NOT NULL,
     TrangThai NVARCHAR(30),
-    MaGiaoDich CHAR(9) NOT NULL,
-    MaTaiKhoan CHAR(12) NOT NULL,
+    MaGiaoDich INT NOT NULL,
+    MaTaiKhoan INT NOT NULL,
     NgayGhiNhan DATE NOT NULL,
     NgayHetHan DATE NOT NULL,
 
@@ -220,7 +218,7 @@ CREATE TABLE DiemThuong(
 GO
 
 CREATE TABLE MaUuDai(
-    MaSo CHAR(7) NOT NULL,
+    MaSo INT IDENTITY(1,1) NOT NULL,
     GiaTri INT NOT NULL,
     TrangThai NVARCHAR(50) NOT NULL,
     DieuKienApDung INT NOT NULL,
@@ -230,7 +228,7 @@ CREATE TABLE MaUuDai(
     NgayBatDauHieuLuc DATE NOT NULL,
     GioiHanSoLanSuDung TINYINT NOT NULL,
     NgayHetHan DATE NOT NULL,
-    MaGiaoDich CHAR(9) NOT NULL,
+    MaGiaoDich INT NOT NULL,
 
     PRIMARY KEY (MaSo),
     CHECK (TrangThai IN (N'Chưa dùng', N'Đã dùng', N'Hết hạn', N'Bị hủy')),
@@ -241,9 +239,9 @@ CREATE TABLE MaUuDai(
 GO
 
 CREATE TABLE MaDoiTuDiem(
-    MaSo CHAR(7) NOT NULL,
-    MaTaiKhoan CHAR(12) NOT NULL,
-    MaDiemThuong CHAR(9) NOT NULL,
+    MaSo INT NOT NULL,
+    MaTaiKhoan INT NOT NULL,
+    MaDiemThuong INT NOT NULL,
 
     PRIMARY KEY (MaSo),
     UNIQUE (MaTaiKhoan),
@@ -255,7 +253,7 @@ CREATE TABLE MaDoiTuDiem(
 GO
 
 CREATE TABLE MaTheoSuKien(
-    MaSo CHAR(7) NOT NULL,
+    MaSo INT NOT NULL,
     TenSuKien NVARCHAR(50) NOT NULL,
 
     PRIMARY KEY (MaSo),
@@ -264,19 +262,20 @@ CREATE TABLE MaTheoSuKien(
 GO
 
 CREATE TABLE Ghe_DanhSachTrangThaiCuaGhe (
-    MaSuatChieu CHAR(7),
-    MaPhim CHAR(10),
+    MaSuatChieu INT,
+    MaPhim INT,
     TrangThai NVARCHAR(10) NOT NULL,
     MaGhe NVARCHAR(7) NOT NULL,
 
     PRIMARY KEY (MaSuatChieu, MaPhim, MaGhe),
-    FOREIGN KEY (MaSuatChieu, MaPhim) REFERENCES SuatChieu(MaSuatChieu, MaPhim),
+    FOREIGN KEY (MaSuatChieu) REFERENCES SuatChieu(MaSuatChieu),
+    FOREIGN KEY (MaPhim) REFERENCES Phim(MaPhim),
     CHECK (TrangThai IN (N'Trống', N'Tạm giữ', N'Đã bán'))
 );
 GO
 
 CREATE TABLE Combo (
-    MaCombo CHAR(10) NOT NULL,
+    MaCombo INT IDENTITY(1,1) NOT NULL,
     Ten NVARCHAR(30) NOT NULL,
     GiaNiemYet INT NOT NULL,
     GiaKhuyenMai INT,
@@ -290,7 +289,7 @@ CREATE TABLE Combo (
 GO
 
 CREATE TABLE Combo_ThanhPhan (
-    Ma_combo CHAR(10),
+    Ma_combo INT,
     ThanhPhanCombo NVARCHAR(5) NOT NULL,
     SoLuong TINYINT NOT NULL,
     
@@ -302,8 +301,8 @@ CREATE TABLE Combo_ThanhPhan (
 GO
 
 CREATE TABLE DuocDiKem (
-    Ma_Combo CHAR(10),
-    Ma_Giaodich CHAR(15),
+    Ma_Combo INT,
+    Ma_Giaodich INT,
     SoLuong TINYINT,
     
     PRIMARY KEY (Ma_Combo, Ma_Giaodich),
@@ -313,7 +312,7 @@ CREATE TABLE DuocDiKem (
 GO
 
 CREATE TABLE Theloai_Phim (
-    Ma_Phim CHAR(10),
+    Ma_Phim INT,
     TheloaiPhim NVARCHAR(50),
     
     PRIMARY KEY (Ma_Phim, TheloaiPhim),
@@ -322,7 +321,7 @@ CREATE TABLE Theloai_Phim (
 GO
 
 CREATE TABLE DinhDangHoTro_Phim (
-    Ma_Phim CHAR(10),
+    Ma_Phim INT,
     DinhDangHoTro NVARCHAR(50),
     
     PRIMARY KEY (Ma_Phim, DinhDangHoTro),
@@ -331,7 +330,7 @@ CREATE TABLE DinhDangHoTro_Phim (
 GO
 
 CREATE TABLE DienVien_Phim (
-    Ma_Phim CHAR(10),
+    Ma_Phim INT,
     DienVien NVARCHAR(100),
     
     PRIMARY KEY (Ma_Phim, DienVien),
@@ -340,7 +339,7 @@ CREATE TABLE DienVien_Phim (
 GO 
 
 CREATE TABLE DaoDien_Phim (
-    Ma_Phim CHAR(10),
+    Ma_Phim INT,
     DaoDien NVARCHAR(100),
     
     PRIMARY KEY (Ma_Phim, DaoDien),
@@ -349,7 +348,7 @@ CREATE TABLE DaoDien_Phim (
 GO
 
 CREATE TABLE NhanSu (
-    ID CHAR(8) NOT NULL,
+    ID INT IDENTITY(1,1) NOT NULL,
     CCCD CHAR(12) NOT NULL,
     DiaChi NVARCHAR(200) NOT NULL,
     GioiTinh NVARCHAR(10) NOT NULL,
@@ -378,7 +377,7 @@ CREATE TABLE NhanSu (
 GO
 
 CREATE TABLE NguoiQuanLy (
-    ID CHAR(8) NOT NULL,
+    ID INT NOT NULL,
     CapBac NVARCHAR(50) NOT NULL,
     KhuVucPhuTrach NVARCHAR(200),
     NgayBoNhiem DATE NOT NULL,
@@ -391,10 +390,10 @@ CREATE TABLE NguoiQuanLy (
 GO
 
 CREATE TABLE NhanVienBanVe (
-    ID CHAR(8) NOT NULL,
+    ID INT NOT NULL,
     VaiTro NVARCHAR(50) NOT NULL,
     MaCaLamViec CHAR(8) NOT NULL,
-    IDQuanLy CHAR(8),
+    IDQuanLy INT,
     
     PRIMARY KEY (ID),
     CHECK (VaiTro IN (N'Bán vé', N'Bán đồ ăn', N'Đa năng')),
@@ -406,8 +405,8 @@ CREATE TABLE NhanVienBanVe (
 GO
 
 CREATE TABLE QuanLy (
-    IDQuanLy CHAR(8) NOT NULL,
-    IDQuanLyCapCao CHAR(8) NOT NULL,
+    IDQuanLy INT NOT NULL,
+    IDQuanLyCapCao INT NOT NULL,
     
     PRIMARY KEY (IDQuanLy),
     CONSTRAINT FK_QuanLy_CapDuoi 
@@ -420,7 +419,7 @@ CREATE TABLE QuanLy (
 GO
 
 CREATE TABLE NhanSuChamCong (
-    ID CHAR(8),
+    ID INT,
     ThoiDiemCheckIn DATETIME,
     ThoiDiemCheckOut DATETIME,
     CaDangKy CHAR(8) NOT NULL,
@@ -436,10 +435,10 @@ CREATE TABLE NhanSuChamCong (
 GO
 
 CREATE TABLE Off_line(
-    MaGiaoDich CHAR(9) NOT NULL,
+    MaGiaoDich INT NOT NULL,
     MaQuay TINYINT NOT NULL,
     MaRap CHAR(5) NOT NULL,
-    ID_NhanVien CHAR(8) NOT NULL, 
+    ID_NhanVien INT NOT NULL, 
 
     PRIMARY KEY (MaGiaoDich),
     CHECK (MaQuay > 0),
@@ -450,7 +449,7 @@ CREATE TABLE Off_line(
 GO
 
 CREATE TABLE On_line(
-    MaGiaoDich CHAR(9) NOT NULL,
+    MaGiaoDich INT NOT NULL,
     SLA TIME NOT NULL,
 
     PRIMARY KEY (MaGiaoDich),
@@ -459,7 +458,7 @@ CREATE TABLE On_line(
 GO
 
 CREATE TABLE DuocTruc (
-    ID_NhanVien CHAR(8) NOT NULL,
+    ID_NhanVien INT NOT NULL,
     MaQuay TINYINT,
     MaRap CHAR(5),
 
@@ -478,37 +477,37 @@ GO
 ---------------------------
 -- 1. KHÁCH HÀNG
 ---------------------------
-INSERT INTO KhachHang (MaKhachHang, HoTen, LoaiKhachHang) VALUES
-('KH000000001', N'Nguyễn Văn An',    N'Thành viên'),
-('KH000000002', N'Trần Thị Bình',    N'Thành viên'),
-('KH000000003', N'Lê Minh Châu',     N'Thường'),
-('KH000000004', N'Phạm Thị Dung',    N'Thành viên'),
-('KH000000005', N'Hoàng Văn Em',     N'Thường'),
-('KH000000006', N'Võ Thị Phương',    N'Thành viên'),
-('KH000000007', N'Đặng Văn Giang',   N'Thường'),
-('KH000000008', N'Bùi Thị Hà',       N'Thành viên'),
-('KH000000009', N'Đinh Văn Khoa',    N'Thường'),
-('KH000000010', N'Lý Thị Lan',       N'Thành viên');
+INSERT INTO KhachHang (HoTen, LoaiKhachHang) VALUES
+(N'Nguyễn Văn An',    N'Thành viên'), -- 1
+(N'Trần Thị Bình',    N'Thành viên'), -- 2
+(N'Lê Minh Châu',     N'Thường'),     -- 3
+(N'Phạm Thị Dung',    N'Thành viên'), -- 4
+(N'Hoàng Văn Em',     N'Thường'),     -- 5
+(N'Võ Thị Phương',    N'Thành viên'), -- 6
+(N'Đặng Văn Giang',   N'Thường'),     -- 7
+(N'Bùi Thị Hà',       N'Thành viên'), -- 8
+(N'Đinh Văn Khoa',    N'Thường'),     -- 9
+(N'Lý Thị Lan',       N'Thành viên'); -- 10
 GO
 
 ---------------------------
 -- 2. TÀI KHOẢN THÀNH VIÊN
 ---------------------------
 INSERT INTO TaiKhoanThanhVien (
-    MaTaiKhoan, TrangThaiHoatDong, TenDangNhap, CapDoTaiKhoan,
+    TrangThaiHoatDong, TenDangNhap, CapDoTaiKhoan,
     TongChiTieuLuyKe, MaKhachHang, RapYeuThich, SoDienThoai,
     NgaySinh, GioiTinh, Email
 ) VALUES
-('TK0000000001', 1, 'nguyenvanan',    N'Member',  2500000, 'KH000000001', N'CGV Landmark 81', '0901234567', '1990-05-15', N'Nam', 'nguyenvanan@gmail.com'),
-('TK0000000002', 1, 'tranthibinh',    N'VIP',     8500000, 'KH000000002', N'CGV Crescent Mall', '0902345678', '1988-08-22', N'Nữ', 'tranthibinh@gmail.com'),
-('TK0000000003', 1, 'leminhchau',     N'Member',  1200000, 'KH000000003', N'CGV SC VivoCity', '0903456789', '1995-01-10', N'Nam', 'leminhchau@gmail.com'),
-('TK0000000004', 1, 'phamthidung',    N'Member',  3200000, 'KH000000004', N'CGV Hùng Vương Plaza', '0904567890', '1995-03-10', N'Nữ', 'phamthidung@gmail.com'),
-('TK0000000005', 1, 'hoangvanem',     N'Member',  2000000, 'KH000000005', N'CGV Sư Vạn Hạnh', '0905678901', '1992-09-09', N'Nam', 'hoangvanem@gmail.com'),
-('TK0000000006', 1, 'vothiphuong',    N'VVIP',   15000000, 'KH000000006', N'CGV Sư Vạn Hạnh', '0906789012', '1985-11-30', N'Nữ', 'vothiphuong@gmail.com'),
-('TK0000000007', 1, 'dangvangiang',   N'Member',  1800000, 'KH000000007', N'CGV Giga Mall', '0907890123', '1993-04-01', N'Nam', 'dangvangiang@gmail.com'),
-('TK0000000008', 1, 'buithiha',       N'VIP',     7800000, 'KH000000008', N'CGV Giga Mall', '0908901234', '1992-07-18', N'Nữ', 'buithiha@gmail.com'),
-('TK0000000009', 1, 'dinhvankhoa',    N'Member',  3000000, 'KH000000009', N'CGV Aeon Tân Phú', '0909012345', '1991-02-20', N'Nam', 'dinhvankhoa@gmail.com'),
-('TK0000000010', 1, 'lythilan',       N'Member',  4100000, 'KH000000010', N'CGV Aeon Tân Phú', '0900123456', '1993-09-25', N'Nữ', 'lythilan@gmail.com');
+(1, 'nguyenvanan',    N'Member',  2500000, 1, N'CGV Landmark 81', '0901234567', '1990-05-15', N'Nam', 'nguyenvanan@gmail.com'),
+(1, 'tranthibinh',    N'VIP',     8500000, 2, N'CGV Crescent Mall', '0902345678', '1988-08-22', N'Nữ', 'tranthibinh@gmail.com'),
+(1, 'leminhchau',     N'Member',  1200000, 3, N'CGV SC VivoCity', '0903456789', '1995-01-10', N'Nam', 'leminhchau@gmail.com'),
+(1, 'phamthidung',    N'Member',  3200000, 4, N'CGV Hùng Vương Plaza', '0904567890', '1995-03-10', N'Nữ', 'phamthidung@gmail.com'),
+(1, 'hoangvanem',     N'Member',  2000000, 5, N'CGV Sư Vạn Hạnh', '0905678901', '1992-09-09', N'Nam', 'hoangvanem@gmail.com'),
+(1, 'vothiphuong',    N'VVIP',   15000000, 6, N'CGV Sư Vạn Hạnh', '0906789012', '1985-11-30', N'Nữ', 'vothiphuong@gmail.com'),
+(1, 'dangvangiang',   N'Member',  1800000, 7, N'CGV Giga Mall', '0907890123', '1993-04-01', N'Nam', 'dangvangiang@gmail.com'),
+(1, 'buithiha',       N'VIP',     7800000, 8, N'CGV Giga Mall', '0908901234', '1992-07-18', N'Nữ', 'buithiha@gmail.com'),
+(1, 'dinhvankhoa',    N'Member',  3000000, 9, N'CGV Aeon Tân Phú', '0909012345', '1991-02-20', N'Nam', 'dinhvankhoa@gmail.com'),
+(1, 'lythilan',       N'Member',  4100000, 10, N'CGV Aeon Tân Phú', '0900123456', '1993-09-25', N'Nữ', 'lythilan@gmail.com');
 GO
 
 ---------------------------
@@ -517,82 +516,82 @@ GO
 INSERT INTO RapChieuPhim (
     MaRap, TenRap, DiaChi_ChiTiet, TinhThanh, ToaDo,
     NgayKhaiTruong, ThoiGianMoCua, ThoiGianDongCua,
-    MoTaTongQuan, TrangThaiHoatDong, SoSuatChieu_MotNgay, TyLeLapDay
+    MoTaTongQuan, TrangThaiHoatDong
 )
 VALUES
 ('CGV01', N'CGV Landmark 81', N'Vinhomes Central Park, Bình Thạnh', N'TP HCM',
     geography::Point(10.7940, 106.7216, 4326),
     '2018-07-26', '09:00', '23:30',
-    N'Rạp CGV tại Landmark 81, nhiều phòng chiếu hiện đại.', N'Hoạt động', 40, 0.75),
+    N'Rạp CGV tại Landmark 81, nhiều phòng chiếu hiện đại.', N'Hoạt động'),
 
 ('CGV02', N'CGV Crescent Mall', N'101 Tôn Dật Tiên, Q.7', N'TP HCM',
     geography::Point(10.7286, 106.7181, 4326),
     '2012-11-30', '09:00', '23:00',
-    N'Rạp CGV tại Crescent Mall, không gian thoáng.', N'Hoạt động', 35, 0.70),
+    N'Rạp CGV tại Crescent Mall, không gian thoáng.', N'Hoạt động'),
 
 ('CGV03', N'CGV SC VivoCity', N'1058 Nguyễn Văn Linh, Q.7', N'TP HCM',
     geography::Point(10.7300, 106.7000, 4326),
     '2015-04-19', '09:00', '23:30',
-    N'CGV tại SC VivoCity, âm thanh hình ảnh chuẩn quốc tế.', N'Hoạt động', 38, 0.72);
+    N'CGV tại SC VivoCity, âm thanh hình ảnh chuẩn quốc tế.', N'Hoạt động');
 GO
 
 ---------------------------
 -- 4. PHIM (10 phim đầu)
 ---------------------------
 INSERT INTO Phim (
-    MaPhim, NamSanXuat, ThoiLuong, MoTaTomTat, MoTaMarketing, NgonNguGoc,
+    NamSanXuat, ThoiLuong, MoTaTomTat, MoTaMarketing, NgonNguGoc,
     GioiHanDoTuoi, NgayKhoiChieu_ChinhThuc, TuaDe, TrangThaiPhatHanh
 )
 VALUES
-('PHIM000001', 2024, '02:12:00',
+(2024, '02:12:00',
  N'Hành trình khám phá ranh giới mới của nhân loại giữa vũ trụ vô tận.',
  N'Bom tấn viễn tưởng với hình ảnh ấn tượng.', N'Tiếng Anh',
- 13, '2025-05-10', N'Biên Niên Sử Ngân Hà', N'Đang chiếu'),
+ 13, '2025-05-10', N'Biên Niên Sử Ngân Hà', N'Đang chiếu'), -- 1
 
-('PHIM000002', 2025, '01:58:00',
+(2025, '01:58:00',
  N'Một đội đặc nhiệm thực hiện sứ mệnh cuối cùng để ngăn chặn thảm họa toàn cầu.',
  N'Nhịp độ nghẹt thở, nhiều pha hành động.', N'Tiếng Anh',
- 16, '2025-07-01', N'Sứ Mệnh Cuối Cùng', N'Đang chiếu'),
+ 16, '2025-07-01', N'Sứ Mệnh Cuối Cùng', N'Đang chiếu'), -- 2
 
-('PHIM000003', 2023, '02:05:00',
+(2023, '02:05:00',
  N'Khai quật bí ẩn trên Sao Hỏa, nhóm thám hiểm đối mặt thế lực vô hình.',
  NULL, N'Tiếng Anh',
- 13, '2024-11-15', N'Bóng Tối Trên Sao Hỏa', N'Ngưng chiếu'),
+ 13, '2024-11-15', N'Bóng Tối Trên Sao Hỏa', N'Đang chiếu'), -- 3
 
-('PHIM000004', 2024, '01:50:00',
+(2024, '01:50:00',
  N'Bác sĩ cấp cứu chạy đua với thời gian để bảo toàn tính mạng bệnh nhân.',
  N'Giật gân đến phút cuối.', N'Tiếng Việt',
- 16, '2025-03-08', N'Lằn Ranh Sinh Tử', N'Đang chiếu'),
+ 16, '2025-03-08', N'Lằn Ranh Sinh Tử', N'Đang chiếu'), -- 4
 
-('PHIM000005', 2023, '02:00:00',
+(2023, '02:00:00',
  N'Con tàu nghiên cứu đối mặt siêu bão trên biển.', 
  NULL, N'Tiếng Anh',
- 13, '2024-06-21', N'Cơn Bão Trên Đại Dương', N'Ngưng chiếu'),
+ 13, '2024-06-21', N'Cơn Bão Trên Đại Dương', N'Ngưng chiếu'), -- 5
 
-('PHIM000006', 2024, '01:42:00',
+(2024, '01:42:00',
  N'Vũ điệu đường phố đưa nhóm trẻ vượt qua định kiến.', 
  N'Âm nhạc bốc lửa.', N'Tiếng Việt',
- 7, '2025-04-12', N'Nhịp Đập Đường Phố', N'Đang chiếu'),
+ 7, '2025-04-12', N'Nhịp Đập Đường Phố', N'Đang chiếu'), -- 6
 
-('PHIM000007', 2025, '01:48:00',
+(2025, '01:48:00',
  N'Cô gái nhận được thông điệp từ tương lai.', 
  NULL, N'Tiếng Nhật',
- 13, '2025-12-05', N'Cô Gái Từ Tương Lai', N'Sắp chiếu'),
+ 13, '2025-12-05', N'Cô Gái Từ Tương Lai', N'Sắp chiếu'), -- 7
 
-('PHIM000008', 2024, '02:08:00',
+(2024, '02:08:00',
  N'Một đô thị không bao giờ ngủ che giấu mạng lưới tội phạm tinh vi.',
  N'Noir hiện đại với cú twist bất ngờ.', N'Tiếng Hàn',
- 16, '2025-02-28', N'Thị Trấn Không Ngủ', N'Đang chiếu'),
+ 16, '2025-02-28', N'Thị Trấn Không Ngủ', N'Đang chiếu'), -- 8
 
-('PHIM000009', 2023, '01:55:00',
+(2023, '01:55:00',
  N'Thợ săn tiền thưởng theo dấu kẻ nguy hiểm.',
  NULL, N'Tiếng Anh',
- 16, '2024-03-29', N'Kẻ Săn Trong Đêm', N'Ngưng chiếu'),
+ 16, '2024-03-29', N'Kẻ Săn Trong Đêm', N'Ngưng chiếu'), -- 9
 
-('PHIM000010', 2025, '02:10:00',
+(2025, '02:10:00',
  N'Đội đặc vụ bí mật bảo vệ nhân chứng trong vụ án xuyên quốc gia.',
  N'Hành động căng thẳng.', N'Tiếng Việt',
- 16, '2025-09-20', N'Mật Danh: Phượng Hoàng', N'Sắp chiếu');
+ 16, '2025-09-20', N'Mật Danh: Phượng Hoàng', N'Sắp chiếu'); -- 10
 GO
 
 ---------------------------
@@ -622,60 +621,60 @@ GO
 -- 5. THỂ LOẠI, ĐỊNH DẠNG, ĐẠO DIỄN, DIỄN VIÊN (basic)
 ---------------------------
 INSERT INTO Theloai_Phim (Ma_Phim, TheloaiPhim) VALUES
-('PHIM000001', N'Khoa học viễn tưởng'),
-('PHIM000001', N'Phiêu lưu'),
-('PHIM000002', N'Hành động'),
-('PHIM000003', N'Giật gân'),
-('PHIM000004', N'Giật gân'),
-('PHIM000005', N'Hành động'),
-('PHIM000006', N'Âm nhạc'),
-('PHIM000007', N'Viễn tưởng'),
-('PHIM000008', N'Hình sự'),
-('PHIM000009', N'Hành động'),
-('PHIM000010', N'Hình sự');
+(1, N'Khoa học viễn tưởng'),
+(1, N'Phiêu lưu'),
+(2, N'Hành động'),
+(3, N'Giật gân'),
+(4, N'Giật gân'),
+(5, N'Hành động'),
+(6, N'Âm nhạc'),
+(7, N'Viễn tưởng'),
+(8, N'Hình sự'),
+(9, N'Hành động'),
+(10, N'Hình sự');
 GO
 
 INSERT INTO DinhDangHoTro_Phim (Ma_Phim, DinhDangHoTro) VALUES
-('PHIM000001', N'2D'),
-('PHIM000001', N'IMAX'),
-('PHIM000002', N'2D'),
-('PHIM000002', N'4DX'),
-('PHIM000003', N'2D'),
-('PHIM000003', N'3D'),
-('PHIM000004', N'2D'),
-('PHIM000005', N'2D'),
-('PHIM000006', N'2D'),
-('PHIM000007', N'2D'),
-('PHIM000008', N'2D'),
-('PHIM000009', N'2D'),
-('PHIM000010', N'2D');
+(1, N'2D'),
+(1, N'IMAX'),
+(2, N'2D'),
+(2, N'4DX'),
+(3, N'2D'),
+(3, N'3D'),
+(4, N'2D'),
+(5, N'2D'),
+(6, N'2D'),
+(7, N'2D'),
+(8, N'2D'),
+(9, N'2D'),
+(10, N'2D');
 GO
 
 INSERT INTO DaoDien_Phim (Ma_Phim, DaoDien) VALUES
-('PHIM000001', N'Trần Minh Khoa'),
-('PHIM000002', N'Lê Hoàng Nam'),
-('PHIM000003', N'Nguyễn Thảo My'),
-('PHIM000004', N'Phạm Quang Huy'),
-('PHIM000005', N'Vũ Hải Yến'),
-('PHIM000006', N'Đặng Nhật Anh'),
-('PHIM000007', N'Suzuki Haru'),
-('PHIM000008', N'Park Joon-ho'),
-('PHIM000009', N'John Miller'),
-('PHIM000010', N'Hoàng Thanh Tùng');
+(1, N'Trần Minh Khoa'),
+(2, N'Lê Hoàng Nam'),
+(3, N'Nguyễn Thảo My'),
+(4, N'Phạm Quang Huy'),
+(5, N'Vũ Hải Yến'),
+(6, N'Đặng Nhật Anh'),
+(7, N'Suzuki Haru'),
+(8, N'Park Joon-ho'),
+(9, N'John Miller'),
+(10, N'Hoàng Thanh Tùng');
 GO
 
 INSERT INTO DienVien_Phim (Ma_Phim, DienVien) VALUES
-('PHIM000001', N'Lan Chi'),
-('PHIM000001', N'Emma Nguyen'),
-('PHIM000002', N'Minh Tú'),
-('PHIM000003', N'Adam Brooks'),
-('PHIM000004', N'Thu Trang'),
-('PHIM000005', N'David Lee'),
-('PHIM000006', N'Isaac'),
-('PHIM000007', N'Yui Nakamura'),
-('PHIM000008', N'Lee Min-ho'),
-('PHIM000009', N'Chris Evans'),
-('PHIM000010', N'Quốc Trường');
+(1, N'Lan Chi'),
+(1, N'Emma Nguyen'),
+(2, N'Minh Tú'),
+(3, N'Adam Brooks'),
+(4, N'Thu Trang'),
+(5, N'David Lee'),
+(6, N'Isaac'),
+(7, N'Yui Nakamura'),
+(8, N'Lee Min-ho'),
+(9, N'Chris Evans'),
+(10, N'Quốc Trường');
 GO
 
 
@@ -686,26 +685,26 @@ GO
 -- 8. SUẤT CHIẾU (12 suất)
 ---------------------------
 INSERT INTO SuatChieu (
-    MaSuatChieu, MaPhim, MaRap, MaPhongChieu,
+    MaPhim, MaRap, MaPhongChieu,
     NgayChieu, DinhDangChieu, NgonNgu, TrangThai,
     HinhThucDichThuat, GioBatDau
 )
 VALUES
-('SC00001', 'PHIM000001', 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '10:00:00'),
-('SC00002', 'PHIM000002', 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '14:00:00'),
-('SC00003', 'PHIM000003', 'CGV01', 2, '2025-11-21', N'3D',      N'Tiếng Anh',  N'Khóa bán','PhuDe',     '19:00:00'),
+(1, 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '10:00:00'), -- 1
+(2, 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '14:00:00'), -- 2
+(3, 'CGV01', 2, '2025-11-21', N'3D',      N'Tiếng Anh',  N'Khóa bán','PhuDe',     '19:00:00'), -- 3
 
-('SC00004', 'PHIM000004', 'CGV02', 1, '2025-11-20', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '09:30:00'),
-('SC00005', 'PHIM000005', 'CGV02', 1, '2025-11-21', N'2D',      N'Tiếng Anh',  N'Đã chiếu','PhuDe',     '13:30:00'),
-('SC00006', 'PHIM000006', 'CGV02', 2, '2025-11-21', N'IMAX',    N'Tiếng Việt', N'Mở bán',  'LongTieng', '18:00:00'),
+(4, 'CGV02', 1, '2025-11-20', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '09:30:00'), -- 4
+(5, 'CGV02', 1, '2025-11-21', N'2D',      N'Tiếng Anh',  N'Đã chiếu','PhuDe',     '13:30:00'), -- 5
+(6, 'CGV02', 2, '2025-11-21', N'IMAX',    N'Tiếng Việt', N'Mở bán',  'LongTieng', '18:00:00'), -- 6
 
-('SC00007', 'PHIM000007', 'CGV03', 1, '2025-11-22', N'2D',      N'Tiếng Nhật', N'Mở bán',  'PhuDe',     '10:15:00'),
-('SC00008', 'PHIM000008', 'CGV03', 1, '2025-11-22', N'2D',      N'Tiếng Hàn',  N'Khóa bán','PhuDe',     '15:00:00'),
-('SC00009', 'PHIM000009', 'CGV03', 2, '2025-11-22', N'4DX',     N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '20:00:00'),
+(7, 'CGV03', 1, '2025-11-22', N'2D',      N'Tiếng Nhật', N'Mở bán',  'PhuDe',     '10:15:00'), -- 7
+(8, 'CGV03', 1, '2025-11-22', N'2D',      N'Tiếng Hàn',  N'Khóa bán','PhuDe',     '15:00:00'), -- 8
+(9, 'CGV03', 2, '2025-11-22', N'4DX',     N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '20:00:00'), -- 9
 
-('SC00010', 'PHIM000010', 'CGV01', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '09:00:00'),
-('SC00011', 'PHIM000001', 'CGV02', 1, '2025-11-23', N'2D',      N'Tiếng Anh',  N'Đã chiếu','PhuDe',     '11:00:00'),
-('SC00012', 'PHIM000006', 'CGV03', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '16:30:00');
+(10, 'CGV01', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '09:00:00'), -- 10
+(1, 'CGV02', 1, '2025-11-23', N'2D',      N'Tiếng Anh',  N'Đã chiếu','PhuDe',     '11:00:00'), -- 11
+(6, 'CGV03', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '16:30:00'); -- 12
 GO
 
 ---------------------------
@@ -730,227 +729,227 @@ GO
 -- 10. TRẠNG THÁI GHẾ THEO SUẤT
 ---------------------------
 INSERT INTO Ghe_DanhSachTrangThaiCuaGhe (MaSuatChieu, MaPhim, TrangThai, MaGhe) VALUES
-('SC00001', 'PHIM000001', N'Trống',    'A01'),
-('SC00001', 'PHIM000001', N'Đã bán',   'A02'),
-('SC00002', 'PHIM000002', N'Tạm giữ',  'A03'),
-('SC00004', 'PHIM000004', N'Trống',    'B01'),
-('SC00005', 'PHIM000005', N'Đã bán',   'B02'),
-('SC00006', 'PHIM000006', N'Trống',    'B03'),
-('SC00007', 'PHIM000007', N'Đã bán',   'C01'),
-('SC00008', 'PHIM000008', N'Tạm giữ',  'C02'),
-('SC00009', 'PHIM000009', N'Trống',    'C03');
+(1, 1, N'Trống',    'A01'),
+(1, 1, N'Đã bán',   'A02'),
+(2, 2, N'Tạm giữ',  'A03'),
+(4, 4, N'Trống',    'B01'),
+(5, 5, N'Đã bán',   'B02'),
+(6, 6, N'Trống',    'B03'),
+(7, 7, N'Đã bán',   'C01'),
+(8, 8, N'Tạm giữ',  'C02'),
+(9, 9, N'Trống',    'C03');
 GO
 
 ---------------------------
 -- 14. GIAO DỊCH (10 giao dịch)
 ---------------------------
 INSERT INTO GiaoDich (
-    MaGiaoDich, MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc,
+    MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc,
     KenhThanhToan, TrangThai, PhuongThuc
 ) VALUES
-('GD0000001', 'KH000000001', '2025-11-20 10:00:00', '2025-11-20 10:02:00', N'Ví điện tử',   N'Đã thanh toán', 'Online'),
-('GD0000002', 'KH000000002', '2025-11-20 14:00:00', '2025-11-20 14:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'),
-('GD0000003', 'KH000000003', '2025-11-20 19:00:00', '2025-11-20 19:01:30', N'Thẻ quốc tế',  N'Tạm giữ',       'Online'),
-('GD0000004', 'KH000000004', '2025-11-21 09:30:00', '2025-11-21 09:31:00', N'Tiền mặt',     N'Hủy',           'Offline'),
-('GD0000005', 'KH000000005', '2025-11-21 13:30:00', '2025-11-21 13:31:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'),
-('GD0000006', 'KH000000006', '2025-11-21 18:00:00', '2025-11-21 18:01:30', N'Thẻ nội địa',  N'Đã thanh toán', 'Online'),
-('GD0000007', 'KH000000007', '2025-11-22 10:15:00', '2025-11-22 10:16:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'),
-('GD0000008', 'KH000000008', '2025-11-22 15:00:00', '2025-11-22 15:01:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'),
-('GD0000009', 'KH000000009', '2025-11-22 20:00:00', '2025-11-22 20:01:30', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'),
-('GD0000010', 'KH000000010', '2025-11-23 09:00:00', '2025-11-23 09:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline');
+(1, '2025-11-20 10:00:00', '2025-11-20 10:02:00', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 1
+(2, '2025-11-20 14:00:00', '2025-11-20 14:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 2
+(3, '2025-11-20 19:00:00', '2025-11-20 19:01:30', N'Thẻ quốc tế',  N'Tạm giữ',       'Online'), -- 3
+(4, '2025-11-21 09:30:00', '2025-11-21 09:31:00', N'Tiền mặt',     N'Hủy',           'Offline'), -- 4
+(5, '2025-11-21 13:30:00', '2025-11-21 13:31:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 5
+(6, '2025-11-21 18:00:00', '2025-11-21 18:01:30', N'Thẻ nội địa',  N'Đã thanh toán', 'Online'), -- 6
+(7, '2025-11-22 10:15:00', '2025-11-22 10:16:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 7
+(8, '2025-11-22 15:00:00', '2025-11-22 15:01:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 8
+(9, '2025-11-22 20:00:00', '2025-11-22 20:01:30', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'), -- 9
+(10, '2025-11-23 09:00:00', '2025-11-23 09:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'); -- 10
 GO
 
 ---------------------------
 -- 16. VÉ (10 vé – mỗi giao dịch 1 vé demo)
 ---------------------------
 INSERT INTO Ve (
-    MaVe, MaGhe, TrangThai, PhuThu, GiaChuan, GiaSauUuDai,
+    MaGhe, TrangThai, PhuThu, GiaChuan, GiaSauUuDai,
     MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe
 ) VALUES
-('VE0000001', 'A01', N'Đã xuất', 0,     80000, 70000, 'GD0000001', 'PHIM000001', 'SC00001', '2025-11-20 10:00:00'),
-('VE0000002', 'A02', N'Đã xuất', 10000, 90000, 80000, 'GD0000002', 'PHIM000002', 'SC00002', '2025-11-20 14:00:00'),
-('VE0000003', 'A03', N'Tạm giữ', 0,     75000, 75000, 'GD0000003', 'PHIM000003', 'SC00003', '2025-11-20 19:00:00'),
-('VE0000004', 'B01', N'Hoàn/Hủy',0,     85000, 85000, 'GD0000004', 'PHIM000004', 'SC00004', '2025-11-21 09:30:00'),
-('VE0000005', 'B02', N'Đã xuất', 0,     90000, 85000, 'GD0000005', 'PHIM000005', 'SC00005', '2025-11-21 13:30:00'),
-('VE0000006', 'B03', N'Đã xuất', 5000,  95000, 90000, 'GD0000006', 'PHIM000006', 'SC00006', '2025-11-21 18:00:00'),
-('VE0000007', 'C01', N'Đã xuất', 0,     80000, 75000, 'GD0000007', 'PHIM000007', 'SC00007', '2025-11-22 10:15:00'),
-('VE0000008', 'C02', N'Đã xuất', 0,     90000, 85000, 'GD0000008', 'PHIM000008', 'SC00008', '2025-11-22 15:00:00'),
-('VE0000009', 'C03', N'Đã xuất', 0,     95000, 90000, 'GD0000009', 'PHIM000009', 'SC00009', '2025-11-22 20:00:00'),
-('VE0000010', 'A01', N'Đã xuất', 0,     80000, 80000, 'GD0000010', 'PHIM000010', 'SC00010', '2025-11-23 09:00:00');
+('A01', N'Đã xuất', 0,     80000, 70000, 1, 1, 1, '2025-11-20 10:00:00'),
+('A02', N'Đã xuất', 10000, 90000, 80000, 2, 2, 2, '2025-11-20 14:00:00'),
+('A03', N'Tạm giữ', 0,     75000, 75000, 3, 3, 3, '2025-11-20 19:00:00'),
+('B01', N'Hoàn/Hủy',0,     85000, 85000, 4, 4, 4, '2025-11-21 09:30:00'),
+('B02', N'Đã xuất', 0,     90000, 85000, 5, 5, 5, '2025-11-21 13:30:00'),
+('B03', N'Đã xuất', 5000,  95000, 90000, 6, 6, 6, '2025-11-21 18:00:00'),
+('C01', N'Đã xuất', 0,     80000, 75000, 7, 7, 7, '2025-11-22 10:15:00'),
+('C02', N'Đã xuất', 0,     90000, 85000, 8, 8, 8, '2025-11-22 15:00:00'),
+('C03', N'Đã xuất', 0,     95000, 90000, 9, 9, 9, '2025-11-22 20:00:00'),
+('A01', N'Đã xuất', 0,     80000, 80000, 10, 10, 10, '2025-11-23 09:00:00');
 GO
 
 ---------------------------
 -- 17. THẺ THÀNH VIÊN
 ---------------------------
 INSERT INTO TheThanhVien (MaSoThe, NgayDangKy, TrangThai, LaTheChinh, MaTaiKhoan) VALUES
-('1234567890123456', '2023-01-15', 1, 1, 'TK0000000001'),
-('2345678901234567', '2022-08-20', 1, 1, 'TK0000000002'),
-('3456789012345678', '2024-03-10', 1, 1, 'TK0000000003'),
-('4567890123456789', '2021-11-25', 1, 1, 'TK0000000004'),
-('5678901234567890', '2023-07-18', 1, 1, 'TK0000000005'),
-('6789012345678901', '2024-09-05', 1, 1, 'TK0000000006'),
-('7890123456789012', '2022-12-15', 1, 1, 'TK0000000007'),
-('8901234567890123', '2023-04-22', 1, 1, 'TK0000000008'),
-('9012345678901234', '2021-06-30', 1, 1, 'TK0000000009'),
-('0123456789012345', '2022-02-02', 1, 1, 'TK0000000010');
+('1234567890123456', '2023-01-15', 1, 1, 1),
+('2345678901234567', '2022-08-20', 1, 1, 2),
+('3456789012345678', '2024-03-10', 1, 1, 3),
+('4567890123456789', '2021-11-25', 1, 1, 4),
+('5678901234567890', '2023-07-18', 1, 1, 5),
+('6789012345678901', '2024-09-05', 1, 1, 6),
+('7890123456789012', '2022-12-15', 1, 1, 7),
+('8901234567890123', '2023-04-22', 1, 1, 8),
+('9012345678901234', '2021-06-30', 1, 1, 9),
+('0123456789012345', '2022-02-02', 1, 1, 10);
 GO
 
 ---------------------------
 -- 18. ĐIỂM THƯỞNG + MÃ ƯU ĐÃI + MÃ ĐỔI TỪ ĐIỂM + MÃ SỰ KIỆN
 ---------------------------
-INSERT INTO DiemThuong (MaDiemThuong, SoLuong, TrangThai, MaGiaoDich, MaTaiKhoan, NgayGhiNhan, NgayHetHan) VALUES
-('DT0000001', 50, N'Còn hiệu lực', 'GD0000001', 'TK0000000001', '2025-11-20', '2026-11-20'),
-('DT0000002', 30, N'Còn hiệu lực', 'GD0000002', 'TK0000000002', '2025-11-20', '2026-11-20'),
-('DT0000003', 20, N'Đã dùng',      'GD0000003', 'TK0000000003', '2025-11-20', '2026-05-20'),
-('DT0000004',  0, N'Đã hết hạn',    'GD0000004', 'TK0000000004', '2025-11-21', '2026-11-21'),
-('DT0000005', 40, N'Còn hiệu lực', 'GD0000005', 'TK0000000005', '2025-11-21', '2026-11-21'),
-('DT0000006', 60, N'Còn hiệu lực', 'GD0000006', 'TK0000000006', '2025-11-21', '2026-11-21'),
-('DT0000007', 15, N'Còn hiệu lực', 'GD0000007', 'TK0000000007', '2025-11-22', '2026-11-22'),
-('DT0000008', 25, N'Còn hiệu lực', 'GD0000008', 'TK0000000008', '2025-11-22', '2026-11-22'),
-('DT0000009', 35, N'Còn hiệu lực', 'GD0000009', 'TK0000000009', '2025-11-22', '2026-11-22'),
-('DT0000010', 45, N'Còn hiệu lực', 'GD0000010', 'TK0000000010', '2025-11-23', '2026-11-23');
+INSERT INTO DiemThuong (SoLuong, TrangThai, MaGiaoDich, MaTaiKhoan, NgayGhiNhan, NgayHetHan) VALUES
+(50, N'Còn hiệu lực', 1, 1, '2025-11-20', '2026-11-20'), -- 1
+(30, N'Còn hiệu lực', 2, 2, '2025-11-20', '2026-11-20'), -- 2
+(20, N'Đã dùng',      3, 3, '2025-11-20', '2026-05-20'), -- 3
+(0, N'Đã hết hạn',    4, 4, '2025-11-21', '2026-11-21'), -- 4
+(40, N'Còn hiệu lực', 5, 5, '2025-11-21', '2026-11-21'), -- 5
+(60, N'Còn hiệu lực', 6, 6, '2025-11-21', '2026-11-21'), -- 6
+(15, N'Còn hiệu lực', 7, 7, '2025-11-22', '2026-11-22'), -- 7
+(25, N'Còn hiệu lực', 8, 8, '2025-11-22', '2026-11-22'), -- 8
+(35, N'Còn hiệu lực', 9, 9, '2025-11-22', '2026-11-22'), -- 9
+(45, N'Còn hiệu lực', 10, 10, '2025-11-23', '2026-11-23'); -- 10
 GO
 
-INSERT INTO MaUuDai (MaSo, GiaTri, TrangThai, DieuKienApDung, Loai, NguonPhatHanh,
+INSERT INTO MaUuDai (GiaTri, TrangThai, DieuKienApDung, Loai, NguonPhatHanh,
                      NgayPhatHanh, NgayBatDauHieuLuc, GioiHanSoLanSuDung, NgayHetHan, MaGiaoDich)
 VALUES
-('UD00001', 50000, N'Chưa dùng', 100000, 'So tien',  N'CGV App',
- '2025-10-01', '2025-10-01', 5, '2025-12-31', 'GD0000001'),
-('UD00002', 20,    N'Chưa dùng',  80000, 'Phan tram',N'Galaxy',
- '2025-09-15', '2025-09-20', 3, '2025-12-31', 'GD0000002'),
-('UD00003', 30000, N'Hết hạn',    60000, 'So tien',  N'Lotte',
- '2025-07-01', '2025-07-05', 2, '2025-10-31', 'GD0000003'),
-('UD00004', 20000, N'Đã dùng',    60000, 'So tien',  N'Beta',
- '2025-11-01', '2025-11-01', 5, '2026-01-01', 'GD0000004');
+(50000, N'Chưa dùng', 100000, 'So tien',  N'CGV App',
+ '2025-10-01', '2025-10-01', 5, '2025-12-31', 1), -- 1
+(20,    N'Chưa dùng',  80000, 'Phan tram',N'Galaxy',
+ '2025-09-15', '2025-09-20', 3, '2025-12-31', 2), -- 2
+(30000, N'Hết hạn',    60000, 'So tien',  N'Lotte',
+ '2025-07-01', '2025-07-05', 2, '2025-10-31', 3), -- 3
+(20000, N'Đã dùng',    60000, 'So tien',  N'Beta',
+ '2025-11-01', '2025-11-01', 5, '2026-01-01', 4); -- 4
 GO
 
 INSERT INTO MaDoiTuDiem (MaSo, MaTaiKhoan, MaDiemThuong) VALUES
-('UD00001', 'TK0000000001', 'DT0000001'),
-('UD00002', 'TK0000000002', 'DT0000002'),
-('UD00004', 'TK0000000006', 'DT0000006');
+(1, 1, 1),
+(2, 2, 2),
+(4, 6, 6);
 GO
 
 INSERT INTO MaTheoSuKien (MaSo, TenSuKien) VALUES
-('UD00001', N'Sự kiện Halloween Movie Night'),
-('UD00002', N'Chương trình Sinh nhật Galaxy'),
-('UD00004', N'Tuần lễ phim Việt Nam 2025');
+(1, N'Sự kiện Halloween Movie Night'),
+(2, N'Chương trình Sinh nhật Galaxy'),
+(4, N'Tuần lễ phim Việt Nam 2025');
 GO
 
 ---------------------------
 -- 19. COMBO + THÀNH PHẦN + ĐƯỢC ĐI KÈM
 ---------------------------
-INSERT INTO Combo (MaCombo, Ten, GiaNiemYet, GiaKhuyenMai, TrangThai, GioiHan) VALUES
-('CB00000001', N'Combo 01',  79000, 69000, N'HoatDong', NULL),
-('CB00000002', N'Combo 02', 129000,109000, N'HoatDong', 100),
-('CB00000003', N'Combo 03',  65000, 59000, N'HoatDong', NULL),
-('CB00000004', N'Combo 04',  99000, 89000, N'HoatDong', 80),
-('CB00000005', N'Combo 05', 159000,139000, N'HoatDong', 50);
+INSERT INTO Combo (Ten, GiaNiemYet, GiaKhuyenMai, TrangThai, GioiHan) VALUES
+(N'Combo 01',  79000, 69000, N'HoatDong', NULL), -- 1
+(N'Combo 02', 129000,109000, N'HoatDong', 100), -- 2
+(N'Combo 03',  65000, 59000, N'HoatDong', NULL), -- 3
+(N'Combo 04',  99000, 89000, N'HoatDong', 80), -- 4
+(N'Combo 05', 159000,139000, N'HoatDong', 50); -- 5
 GO
 
 INSERT INTO Combo_ThanhPhan (Ma_combo, ThanhPhanCombo, SoLuong) VALUES
-('CB00000001', 'Bap',   1),
-('CB00000001', 'Nuoc',  1),
-('CB00000002', 'Bap',   2),
-('CB00000002', 'Nuoc',  2),
-('CB00000003', 'Bap',   1),
-('CB00000003', 'Snack', 2),
-('CB00000004', 'Bap',   2),
-('CB00000004', 'Nuoc',  1),
-('CB00000005', 'Bap',   3),
-('CB00000005', 'Nuoc',  2),
-('CB00000005', 'Snack', 2);
+(1, 'Bap',   1),
+(1, 'Nuoc',  1),
+(2, 'Bap',   2),
+(2, 'Nuoc',  2),
+(3, 'Bap',   1),
+(3, 'Snack', 2),
+(4, 'Bap',   2),
+(4, 'Nuoc',  1),
+(5, 'Bap',   3),
+(5, 'Nuoc',  2),
+(5, 'Snack', 2);
 GO
 
 INSERT INTO DuocDiKem (Ma_Combo, Ma_Giaodich, SoLuong) VALUES
-('CB00000001', 'GD0000001', 1),
-('CB00000002', 'GD0000002', 1),
-('CB00000003', 'GD0000005', 2),
-('CB00000004', 'GD0000006', 1),
-('CB00000005', 'GD0000008', 1);
+(1, 1, 1),
+(2, 2, 1),
+(3, 5, 2),
+(4, 6, 1),
+(5, 8, 1);
 GO
 
 ---------------------------
 -- 11. NHÂN SỰ
 ---------------------------
 INSERT INTO NhanSu (
-    ID, CCCD, DiaChi, GioiTinh, NgaySinh,
+    CCCD, DiaChi, GioiTinh, NgaySinh,
     HoTen, NgayBatDauLamViec, MucLuongCoBan,
     LoaiHopDong, TrangThai, SoDienThoai, Email, MaRap
 ) VALUES
-('QL000001', '001202012345', N'123 Nguyễn Huệ, Q1', N'Nam', '1985-03-15',
- N'Trần Văn Quản Lý', '2018-05-01', 25000000, N'Chính thức', N'Đang làm', '0901111111', 'ql1@cgv.vn', 'CGV01'),
+('001202012345', N'123 Nguyễn Huệ, Q1', N'Nam', '1985-03-15',
+ N'Trần Văn Quản Lý', '2018-05-01', 25000000, N'Chính thức', N'Đang làm', '0901111111', 'ql1@cgv.vn', 'CGV01'), -- 1
 
-('QL000002', '001202012346', N'56 Lê Lai, Q3', N'Nữ', '1990-07-22',
- N'Lê Thị Khu Vực', '2019-08-15', 20000000, N'Chính thức', N'Đang làm', '0902222222', 'ql2@cgv.vn', 'CGV02'),
+('001202012346', N'56 Lê Lai, Q3', N'Nữ', '1990-07-22',
+ N'Lê Thị Khu Vực', '2019-08-15', 20000000, N'Chính thức', N'Đang làm', '0902222222', 'ql2@cgv.vn', 'CGV02'), -- 2
 
-('QL000003', '001202012347', N'89 Võ Văn Tần, Q5', N'Nam', '1992-11-30',
- N'Nguyễn Văn Rạp', '2020-02-01', 18000000, N'Chính thức', N'Đang làm', '0903333333', 'ql3@cgv.vn', 'CGV03'),
+('001202012347', N'89 Võ Văn Tần, Q5', N'Nam', '1992-11-30',
+ N'Nguyễn Văn Rạp', '2020-02-01', 18000000, N'Chính thức', N'Đang làm', '0903333333', 'ql3@cgv.vn', 'CGV03'), -- 3
 
-('NV000001', '001202012348', N'12 Phan Đình Phùng', N'Nam', '1998-01-10',
- N'Phạm Văn Bán Vé', '2022-06-01', 8000000, N'Thử việc', N'Đang làm', '0904444444', 'nv1@cgv.vn', 'CGV01'),
+('001202012348', N'12 Phan Đình Phùng', N'Nam', '1998-01-10',
+ N'Phạm Văn Bán Vé', '2022-06-01', 8000000, N'Thử việc', N'Đang làm', '0904444444', 'nv1@cgv.vn', 'CGV01'), -- 4
 
-('NV000002', '001202012349', N'34 Hoàng Văn Thụ', N'Nữ', '1995-05-18',
- N'Hoàng Thị Vé', '2021-09-10', 8500000, N'Chính thức', N'Đang làm', '0905555555', 'nv2@cgv.vn', 'CGV01'),
+('001202012349', N'34 Hoàng Văn Thụ', N'Nữ', '1995-05-18',
+ N'Hoàng Thị Vé', '2021-09-10', 8500000, N'Chính thức', N'Đang làm', '0905555555', 'nv2@cgv.vn', 'CGV01'), -- 5
 
-('NV000003', '001202012350', N'56 Bùi Thị Xuân', N'Nam', '1997-08-25',
- N'Bùi Văn Đa Năng', '2022-01-15', 9000000, N'Chính thức', N'Đang làm', '0906666666', 'nv3@cgv.vn', 'CGV02'),
+('001202012350', N'56 Bùi Thị Xuân', N'Nam', '1997-08-25',
+ N'Bùi Văn Đa Năng', '2022-01-15', 9000000, N'Chính thức', N'Đang làm', '0906666666', 'nv3@cgv.vn', 'CGV02'), -- 6
 
-('NV000004', '001202012351', N'78 Trần Hưng Đạo', N'Nữ', '1996-12-05',
- N'Trần Thị Đồ Ăn', '2021-12-20', 8200000, N'Chính thức', N'Đang làm', '0907777777', 'nv4@cgv.vn', 'CGV02'),
+('001202012351', N'78 Trần Hưng Đạo', N'Nữ', '1996-12-05',
+ N'Trần Thị Đồ Ăn', '2021-12-20', 8200000, N'Chính thức', N'Đang làm', '0907777777', 'nv4@cgv.vn', 'CGV02'), -- 7
 
-('NV000005', '001202012352', N'90 Nguyễn Thị Minh Khai', N'Nam', '1999-04-12',
- N'Nguyễn Văn Mới', '2023-03-01', 7800000, N'Thử việc', N'Đang làm', '0908888888', 'nv5@cgv.vn', 'CGV03'),
+('001202012352', N'90 Nguyễn Thị Minh Khai', N'Nam', '1999-04-12',
+ N'Nguyễn Văn Mới', '2023-03-01', 7800000, N'Thử việc', N'Đang làm', '0908888888', 'nv5@cgv.vn', 'CGV03'), -- 8
 
-('NV000006', '001202012353', N'45 Lý Thường Kiệt', N'Nữ', '1994-09-30',
- N'Lý Thị Kinh Nghiệm', '2020-11-05', 9500000, N'Chính thức', N'Đang làm', '0909999999', 'nv6@cgv.vn', 'CGV03'),
+('001202012353', N'45 Lý Thường Kiệt', N'Nữ', '1994-09-30',
+ N'Lý Thị Kinh Nghiệm', '2020-11-05', 9500000, N'Chính thức', N'Đang làm', '0909999999', 'nv6@cgv.vn', 'CGV03'), -- 9
 
-('NV000007', '001202012354', N'67 Cách Mạng Tháng 8', N'Nam', '1993-02-28',
- N'Đặng Văn Lâu', '2020-07-20', 9200000, N'Chính thức', N'Đang làm', '0900000000', 'nv7@cgv.vn', 'CGV03');
+('001202012354', N'67 Cách Mạng Tháng 8', N'Nam', '1993-02-28',
+ N'Đặng Văn Lâu', '2020-07-20', 9200000, N'Chính thức', N'Đang làm', '0900000000', 'nv7@cgv.vn', 'CGV03'); -- 10
 GO
 
 ---------------------------
 -- 12. NGƯỜI QUẢN LÝ & NHÂN VIÊN BÁN VÉ
 ---------------------------
 INSERT INTO NguoiQuanLy (ID, CapBac, KhuVucPhuTrach, NgayBoNhiem) VALUES
-('QL000001', N'Quản lý cấp cao',  N'Toàn quốc',        '2018-05-01'),
-('QL000002', N'Quản lý khu vực', N'Khu vực TP.HCM',   '2019-08-15'),
-('QL000003', N'Quản lý rạp',     N'Rạp CGV03',        '2020-02-01');
+(1, N'Quản lý cấp cao',  N'Toàn quốc',        '2018-05-01'),
+(2, N'Quản lý khu vực', N'Khu vực TP.HCM',   '2019-08-15'),
+(3, N'Quản lý rạp',     N'Rạp CGV03',        '2020-02-01');
 GO
 
 INSERT INTO NhanVienBanVe (ID, VaiTro, MaCaLamViec, IDQuanLy) VALUES
-('NV000001', N'Bán vé',     'CA000001', 'QL000001'),
-('NV000002', N'Đa năng',    'CA000002', 'QL000001'),
-('NV000003', N'Bán đồ ăn',  'CA000003', 'QL000002'),
-('NV000004', N'Bán vé',     'CA000004', 'QL000002'),
-('NV000005', N'Đa năng',    'CA000005', 'QL000003'),
-('NV000006', N'Bán đồ ăn',  'CA000006', 'QL000003'),
-('NV000007', N'Bán vé',     'CA000007', 'QL000003');
+(4, N'Bán vé',     'CA000001', 1),
+(5, N'Đa năng',    'CA000002', 1),
+(6, N'Bán đồ ăn',  'CA000003', 2),
+(7, N'Bán vé',     'CA000004', 2),
+(8, N'Đa năng',    'CA000005', 3),
+(9, N'Bán đồ ăn',  'CA000006', 3),
+(10, N'Bán vé',     'CA000007', 3);
 GO
 
 INSERT INTO QuanLy (IDQuanLy, IDQuanLyCapCao) VALUES
-('QL000002', 'QL000001'),
-('QL000003', 'QL000002');
+(2, 1),
+(3, 2);
 GO
 
 ---------------------------
 -- 13. CHẤM CÔNG & ĐƯỢC TRỰC
 ---------------------------
 INSERT INTO NhanSuChamCong (ID, ThoiDiemCheckIn, ThoiDiemCheckOut, CaDangKy, CaThucTe, SaiLech) VALUES
-('NV000001', '2025-11-20 08:00:00', '2025-11-20 17:00:00', 'CA000001', 'CA000001', 0),
-('NV000002', '2025-11-20 08:15:00', '2025-11-20 17:15:00', 'CA000002', 'CA000002', 15),
-('QL000002', '2025-11-20 08:00:00', '2025-11-20 20:00:00', 'CA000001', 'CA000003', 180),
-('NV000003', '2025-11-21 08:00:00', NULL,                  'CA000003', 'CA000003', NULL),
-('NV000004', '2025-11-21 13:50:00', '2025-11-21 22:00:00', 'CA000004', 'CA000004', -10),
-('QL000003', '2025-11-21 08:00:00', '2025-11-21 17:00:00', 'CA000005', 'CA000005', 0);
+(4, '2025-11-20 08:00:00', '2025-11-20 17:00:00', 'CA000001', 'CA000001', 0),
+(5, '2025-11-20 08:15:00', '2025-11-20 17:15:00', 'CA000002', 'CA000002', 15),
+(2, '2025-11-20 08:00:00', '2025-11-20 20:00:00', 'CA000001', 'CA000003', 180),
+(6, '2025-11-21 08:00:00', NULL,                  'CA000003', 'CA000003', NULL),
+(7, '2025-11-21 13:50:00', '2025-11-21 22:00:00', 'CA000004', 'CA000004', -10),
+(3, '2025-11-21 08:00:00', '2025-11-21 17:00:00', 'CA000005', 'CA000005', 0);
 GO
 
 INSERT INTO DuocTruc (ID_NhanVien, MaQuay, MaRap) VALUES
-('NV000001', 1, 'CGV01'),
-('NV000002', 2, 'CGV01'),
-('NV000003', 1, 'CGV02'),
-('NV000004', 2, 'CGV02'),
-('NV000005', 1, 'CGV03'),
-('NV000006', 1, 'CGV03');
+(4, 1, 'CGV01'),
+(5, 2, 'CGV01'),
+(6, 1, 'CGV02'),
+(7, 2, 'CGV02'),
+(8, 1, 'CGV03'),
+(9, 1, 'CGV03');
 GO
 
 
@@ -959,19 +958,19 @@ GO
 -- 15. OFFLINE & ONLINE
 ---------------------------
 INSERT INTO Off_line (MaGiaoDich, MaQuay, MaRap, ID_NhanVien) VALUES
-('GD0000002', 1, 'CGV01', 'NV000001'),
-('GD0000004', 1, 'CGV02', 'NV000003'),
-('GD0000007', 2, 'CGV01', 'NV000002'),
-('GD0000010', 1, 'CGV03', 'NV000005');
+(2, 1, 'CGV01', 4),
+(4, 1, 'CGV02', 6),
+(7, 2, 'CGV01', 5),
+(10, 1, 'CGV03', 8);
 GO
 
 INSERT INTO On_line (MaGiaoDich, SLA) VALUES
-('GD0000001', '00:05:00'),
-('GD0000003', '00:05:00'),
-('GD0000005', '00:05:00'),
-('GD0000006', '00:05:00'),
-('GD0000008', '00:05:00'),
-('GD0000009', '00:05:00');
+(1, '00:05:00'),
+(3, '00:05:00'),
+(5, '00:05:00'),
+(6, '00:05:00'),
+(8, '00:05:00'),
+(9, '00:05:00');
 GO
 
 ----2.1-----
@@ -979,8 +978,7 @@ GO
 
 -- Thủ tục Insert suất chiếu --
 CREATE OR ALTER PROCEDURE sp_Insert_SuatChieu
-    @MaSuatChieu CHAR(7),
-    @MaPhim CHAR(10),
+    @MaPhim INT,
     @MaRap CHAR(5),
     @MaPhongChieu TINYINT,
     @NgayChieu DATE,
@@ -1007,15 +1005,7 @@ BEGIN
             RETURN;
         END
 
-        -- 2. Kiểm tra PRIMARY KEY (MaSuatChieu, MaPhim) - Đã tồn tại
-        IF EXISTS (SELECT 1 FROM SuatChieu WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim)
-        BEGIN
-            SET @ErrorMessage = N'Lỗi ràng buộc PRIMARY KEY: Suất chiếu có Mã Suất Chiếu (' + @MaSuatChieu + N') và Mã Phim (' + @MaPhim + N') này đã tồn tại.';
-            RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
-            RETURN;
-        END
-
-        -- 3. Kiểm tra CHECK: MaPhongChieu > 0
+        -- 2. Kiểm tra CHECK: MaPhongChieu > 0
         IF @MaPhongChieu <= 0
         BEGIN
             SET @ErrorMessage = N'Lỗi ràng buộc CHECK: Mã Phòng Chiếu phải là một số nguyên dương lớn hơn 0. Giá trị nhập: ' + CAST(@MaPhongChieu AS NVARCHAR(5));
@@ -1023,7 +1013,7 @@ BEGIN
             RETURN;
         END
 
-        -- 4. Kiểm tra CHECK: TrangThai
+        -- 3. Kiểm tra CHECK: TrangThai
         IF @TrangThai NOT IN (N'Mở bán', N'Khóa bán', N'Đã chiếu', N'Hủy')
         BEGIN
             SET @ErrorMessage = N'Lỗi ràng buộc CHECK: Trạng Thái phải là một trong các giá trị: "Mở bán", "Khóa bán", "Đã chiếu", hoặc "Hủy". Giá trị nhập: ' + @TrangThai;
@@ -1031,7 +1021,7 @@ BEGIN
             RETURN;
         END
 
-        -- 5. Kiểm tra CHECK: HinhThucDichThuat
+        -- 4. Kiểm tra CHECK: HinhThucDichThuat
         IF @HinhThucDichThuat NOT IN ('PhuDe', 'LongTieng')
         BEGIN
             SET @ErrorMessage = N'Lỗi ràng buộc CHECK: Hình Thức Dịch Thuật phải là "PhuDe" (Phụ Đề) hoặc "LongTieng" (Lồng Tiếng). Giá trị nhập: ' + @HinhThucDichThuat;
@@ -1039,15 +1029,15 @@ BEGIN
             RETURN;
         END
 
-        -- 6. Kiểm tra FOREIGN KEY: MaPhim (Kiểm tra sự tồn tại trong bảng Phim)
+        -- 5. Kiểm tra FOREIGN KEY: MaPhim (Kiểm tra sự tồn tại trong bảng Phim)
         IF NOT EXISTS (SELECT 1 FROM Phim WHERE MaPhim = @MaPhim)
         BEGIN
-            SET @ErrorMessage = N'Lỗi ràng buộc FOREIGN KEY: Mã Phim (' + @MaPhim + N') không tồn tại trong bảng Phim.';
+            SET @ErrorMessage = N'Lỗi ràng buộc FOREIGN KEY: Mã Phim (' + CAST(@MaPhim AS NVARCHAR(10)) + N') không tồn tại trong bảng Phim.';
             RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
             RETURN;
         END
 
-        -- 7. Kiểm tra FOREIGN KEY: (MaPhongChieu, MaRap) (Kiểm tra sự tồn tại trong bảng PhongChieu)
+        -- 6. Kiểm tra FOREIGN KEY: (MaPhongChieu, MaRap) (Kiểm tra sự tồn tại trong bảng PhongChieu)
         IF NOT EXISTS (SELECT 1 FROM PhongChieu WHERE MaPhong = @MaPhongChieu AND MaRap = @MaRap)
         BEGIN
             SET @ErrorMessage = N'Lỗi ràng buộc FOREIGN KEY: Mã Phòng Chiếu (' + CAST(@MaPhongChieu AS NVARCHAR(5)) + N') hoặc Mã Rạp (' + @MaRap + N') không tồn tại trong bảng PhongChieu.';
@@ -1055,34 +1045,80 @@ BEGIN
             RETURN;
         END
 
-        -- 8. KIỂM TRA LOGIC: LoaiPhong phải nằm trong DinhDangHoTro_Phim và tương thích với DinhDangChieu
+        -- 7. KIỂM TRA LOGIC: LoaiPhong phải nằm trong DinhDangHoTro_Phim và tương thích với DinhDangChieu
+        -- 7a. Kiểm tra phòng chiếu có hỗ trợ định dạng chiếu không
+        DECLARE @LoaiPhong NVARCHAR(10);
+        SELECT @LoaiPhong = LoaiPhong FROM PhongChieu WHERE MaPhong = @MaPhongChieu AND MaRap = @MaRap;
+        
+        IF @LoaiPhong <> @DinhDangChieu
+        BEGIN
+            SET @ErrorMessage = N'Lỗi logic: Phòng chiếu (' + CAST(@MaPhongChieu AS NVARCHAR(5)) +
+                                N') tại Rạp (' + @MaRap +
+                                N') có loại phòng (' + @LoaiPhong + 
+                                N') không khớp với định dạng chiếu yêu cầu (' + @DinhDangChieu + N').';
+            RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+            RETURN;
+        END
+
+        -- 7b. Kiểm tra phim có hỗ trợ định dạng chiếu không
         IF NOT EXISTS (
             SELECT 1 
-            FROM PhongChieu AS PC 
-            INNER JOIN DinhDangHoTro_Phim AS DDH 
-                ON PC.LoaiPhong = DDH.DinhDangHoTro
-            WHERE 
-                PC.MaPhong = @MaPhongChieu 
-                AND PC.MaRap = @MaRap
-                AND DDH.Ma_Phim = @MaPhim
-                AND PC.LoaiPhong = @DinhDangChieu
+            FROM DinhDangHoTro_Phim 
+            WHERE Ma_Phim = @MaPhim AND DinhDangHoTro = @DinhDangChieu
         )
         BEGIN
-            SET @ErrorMessage = N'Lỗi logic: Phòng (' + CAST(@MaPhongChieu AS NVARCHAR(5)) +
-                                N') tại Rạp (' + @MaRap +
+            DECLARE @TenPhim NVARCHAR(255);
+            SELECT @TenPhim = TuaDe FROM Phim WHERE MaPhim = @MaPhim;
+            SET @ErrorMessage = N'Lỗi logic: Phim "' + @TenPhim + 
+                                N'" (Mã: ' + CAST(@MaPhim AS NVARCHAR(10)) +
                                 N') không hỗ trợ định dạng chiếu (' + @DinhDangChieu + N').';
             RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
             RETURN;
         END
         ---
 
+        -- 8. KIỂM TRA LOGIC: Kiểm tra thời gian quá khứ
+        DECLARE @FullShowTime DATETIME = CAST(@NgayChieu AS DATETIME) + CAST(@GioBatDau AS DATETIME);
+        IF @FullShowTime < GETDATE()
+        BEGIN
+            SET @ErrorMessage = N'Lỗi logic: Không thể tạo suất chiếu trong quá khứ (' + CONVERT(NVARCHAR, @FullShowTime, 120) + N').';
+            RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+            RETURN;
+        END
+
+        -- 9. KIỂM TRA LOGIC: Kiểm tra overlap và 15 phút giãn cách
+        
+        DECLARE @ThoiLuongNew TIME;
+        SELECT @ThoiLuongNew = ThoiLuong FROM Phim WHERE MaPhim = @MaPhim;
+
+        IF EXISTS (
+            SELECT 1 
+            FROM SuatChieu SC
+            JOIN Phim P ON SC.MaPhim = P.MaPhim
+            WHERE 
+                SC.MaRap = @MaRap 
+                AND SC.MaPhongChieu = @MaPhongChieu
+                AND SC.NgayChieu = @NgayChieu
+                AND SC.TrangThai <> N'Hủy' -- Bỏ qua các suất đã hủy
+                AND (
+                    (CAST(@GioBatDau AS DATETIME) < DATEADD(MINUTE, 15, DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', P.ThoiLuong), CAST(SC.GioBatDau AS DATETIME))))
+                    AND 
+                    (DATEADD(MINUTE, 15, DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', @ThoiLuongNew), CAST(@GioBatDau AS DATETIME))) > CAST(SC.GioBatDau AS DATETIME))
+                )
+        )
+        BEGIN
+            SET @ErrorMessage = N'Lỗi nghiệp vụ: Suất chiếu bị trùng lịch hoặc vi phạm khoảng cách nghỉ 15 phút với suất khác.';
+            RAISERROR(@ErrorMessage, @ErrorSeverity, @ErrorState);
+            RETURN;
+        END
+
         -- Nếu tất cả kiểm tra đều hợp lệ, thực hiện INSERT
         INSERT INTO SuatChieu (
-            MaSuatChieu, MaPhim, MaRap, MaPhongChieu, NgayChieu, 
+            MaPhim, MaRap, MaPhongChieu, NgayChieu, 
             DinhDangChieu, NgonNgu, TrangThai, HinhThucDichThuat, GioBatDau
         )
         VALUES (
-            @MaSuatChieu, @MaPhim, @MaRap, @MaPhongChieu, @NgayChieu, 
+            @MaPhim, @MaRap, @MaPhongChieu, @NgayChieu, 
             @DinhDangChieu, @NgonNgu, @TrangThai, @HinhThucDichThuat, @GioBatDau
         );
 
@@ -1117,68 +1153,129 @@ GO
 
 -- Thủ tục Update thông tin suất chiếu --
 CREATE OR ALTER PROCEDURE Update_ThongTinSuatChieu
-    @MaSuatChieu CHAR(7),
-    @MaPhim CHAR(10),
+    @MaSuatChieu INT,
+    @MaPhim INT,
     @GioBatDauMoi TIME = NULL,   
     @MaPhongMoi TINYINT = NULL, 
-    @MaRap CHAR(5)      
+    @MaRap CHAR(5)
 AS
 BEGIN
+    -- 1. Kiểm tra tồn tại
     IF NOT EXISTS (SELECT 1 FROM SuatChieu WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim)
     BEGIN
         RAISERROR(N'Lỗi: Suất chiếu không tồn tại.', 16, 1);
         RETURN;
     END
 
+    -- 2. Kiểm tra vé đã bán
     IF EXISTS (
         SELECT 1 FROM Ve 
-        WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim 
-        AND TrangThai IN (N'Đã bán', N'Đang đặt')
+        WHERE MaSuatChieu = @MaSuatChieu 
+          AND MaPhim = @MaPhim 
+          AND TrangThai IN (N'Đã xuất', N'Tạm giữ')
     )
     BEGIN
-        RAISERROR(N'Lỗi: Không thể cập nhật suất chiếu này vì đã có vé bán ra.', 16, 1);
+        RAISERROR(N'Lỗi nghiệp vụ: Không thể cập nhật suất chiếu này vì đã có vé được bán hoặc tạm giữ.', 16, 1);
         RETURN;
     END
 
-    IF (@GioBatDauMoi IS NOT NULL OR @MaPhongMoi IS NOT NULL)
+    -- 3. Chuẩn bị dữ liệu
+    DECLARE @NgayChieu DATE;
+    DECLARE @ThoiLuongCurrent TIME;
+    DECLARE @FinalPhong TINYINT;
+    DECLARE @FinalGio TIME;
+
+    SELECT 
+        @NgayChieu = SC.NgayChieu, 
+        @ThoiLuongCurrent = P.ThoiLuong, 
+        @FinalPhong = ISNULL(@MaPhongMoi, SC.MaPhongChieu),
+        @FinalGio = ISNULL(@GioBatDauMoi, SC.GioBatDau)
+    FROM SuatChieu SC
+    JOIN Phim P ON SC.MaPhim = P.MaPhim
+    WHERE SC.MaSuatChieu = @MaSuatChieu AND SC.MaPhim = @MaPhim;
+
+    -- 3b. Kiểm tra phòng mới có hỗ trợ định dạng chiếu không (chỉ khi đổi phòng)
+    IF @MaPhongMoi IS NOT NULL
     BEGIN
-        DECLARE @NgayChieu DATE;
-        DECLARE @ThoiLuong TIME;
-        DECLARE @PhongCheck TINYINT;
-        DECLARE @GioCheck TIME;
-
-        SELECT @NgayChieu = SC.NgayChieu, @ThoiLuong = P.ThoiLuong, 
-               @PhongCheck = ISNULL(@MaPhongMoi, SC.MaPhongChieu),
-               @GioCheck = ISNULL(@GioBatDauMoi, SC.GioBatDau)
-        FROM SuatChieu SC
-        JOIN Phim P ON SC.MaPhim = P.MaPhim
-        WHERE SC.MaSuatChieu = @MaSuatChieu AND SC.MaPhim = @MaPhim;
-
-        DECLARE @GioKetThucCheck TIME = CAST(DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', @ThoiLuong), CAST(@GioCheck AS DATETIME)) AS TIME);
-
-        IF EXISTS (
-            SELECT 1 FROM SuatChieu SC_Khac
-            JOIN Phim P_Khac ON SC_Khac.MaPhim = P_Khac.MaPhim
-            WHERE SC_Khac.MaRap = @MaRap 
-              AND SC_Khac.MaPhongChieu = @PhongCheck
-              AND SC_Khac.NgayChieu = @NgayChieu
-              AND SC_Khac.MaSuatChieu != @MaSuatChieu
-              AND (
-                  (@GioCheck < CAST(DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', P_Khac.ThoiLuong), CAST(SC_Khac.GioBatDau AS DATETIME)) AS TIME))
-                  AND 
-                  (@GioKetThucCheck > SC_Khac.GioBatDau)
-              )
+        DECLARE @DinhDangChieu NVARCHAR(10);
+        DECLARE @LoaiPhongMoi NVARCHAR(10);
+        DECLARE @TenPhim NVARCHAR(255);
+        
+        -- Lấy định dạng chiếu hiện tại của suất chiếu
+        SELECT @DinhDangChieu = DinhDangChieu FROM SuatChieu WHERE MaSuatChieu = @MaSuatChieu;
+        
+        -- Lấy loại phòng của phòng mới
+        SELECT @LoaiPhongMoi = LoaiPhong FROM PhongChieu WHERE MaPhong = @MaPhongMoi AND MaRap = @MaRap;
+        
+        -- Kiểm tra phòng mới có tồn tại không
+        IF @LoaiPhongMoi IS NULL
+        BEGIN
+            RAISERROR(N'Lỗi: Phòng chiếu mới không tồn tại trong rạp này.', 16, 1);
+            RETURN;
+        END
+        
+        -- Kiểm tra loại phòng mới có khớp với định dạng chiếu không
+        IF @LoaiPhongMoi <> @DinhDangChieu
+        BEGIN
+            DECLARE @ErrorMsg1 NVARCHAR(500);
+            SET @ErrorMsg1 = N'Lỗi logic: Phòng chiếu mới (' + CAST(@MaPhongMoi AS NVARCHAR(5)) +
+                            N') có loại phòng (' + @LoaiPhongMoi + 
+                            N') không khớp với định dạng chiếu của suất chiếu (' + @DinhDangChieu + N').';
+            RAISERROR(@ErrorMsg1, 16, 1);
+            RETURN;
+        END
+        
+        -- Kiểm tra phim có hỗ trợ định dạng này không (phòng hợp lệ nhưng phim không hỗ trợ)
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM DinhDangHoTro_Phim 
+            WHERE Ma_Phim = @MaPhim AND DinhDangHoTro = @LoaiPhongMoi
         )
         BEGIN
-            RAISERROR(N'Lỗi: Phòng chiếu đã bị trùng lịch với suất chiếu khác vào giờ này.', 16, 1);
+            SELECT @TenPhim = TuaDe FROM Phim WHERE MaPhim = @MaPhim;
+            DECLARE @ErrorMsg2 NVARCHAR(500);
+            SET @ErrorMsg2 = N'Lỗi logic: Phim "' + @TenPhim + 
+                            N'" không hỗ trợ định dạng chiếu (' + @LoaiPhongMoi + N') của phòng mới.';
+            RAISERROR(@ErrorMsg2, 16, 1);
             RETURN;
         END
     END
 
+    -- 4. Kiểm tra Thời gian Quá khứ
+    DECLARE @FullNewShowTime DATETIME = CAST(@NgayChieu AS DATETIME) + CAST(@FinalGio AS DATETIME);
+    IF @FullNewShowTime < GETDATE()
+    BEGIN
+        RAISERROR(N'Lỗi logic: Không thể cập nhật suất chiếu về thời điểm trong quá khứ.', 16, 1);
+        RETURN;
+    END
+
+    -- 5. Kiểm tra trùng lịch
+    IF EXISTS (
+        SELECT 1 
+        FROM SuatChieu SC_Khac
+        JOIN Phim P_Khac ON SC_Khac.MaPhim = P_Khac.MaPhim
+        WHERE 
+            SC_Khac.MaRap = @MaRap 
+            AND SC_Khac.MaPhongChieu = @FinalPhong 
+            AND SC_Khac.NgayChieu = @NgayChieu
+            AND SC_Khac.TrangThai <> N'Hủy'
+            AND SC_Khac.MaSuatChieu != @MaSuatChieu
+            AND (
+                (CAST(@FinalGio AS DATETIME) < DATEADD(MINUTE, 15, DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', P_Khac.ThoiLuong), CAST(SC_Khac.GioBatDau AS DATETIME))))
+                AND 
+                (DATEADD(MINUTE, 15, DATEADD(SECOND, DATEDIFF(SECOND, '00:00:00', @ThoiLuongCurrent), CAST(@FinalGio AS DATETIME))) > CAST(SC_Khac.GioBatDau AS DATETIME))
+            )
+    )
+    BEGIN
+        RAISERROR(N'Lỗi nghiệp vụ: Cập nhật thất bại do trùng lịch hoặc vi phạm khoảng cách nghỉ 15 phút.', 16, 1);
+        RETURN;
+    END
+
+    -- 6. Thực hiện Update
     UPDATE SuatChieu
     SET 
-        GioBatDau = ISNULL(@GioBatDauMoi, GioBatDau),
-        MaPhongChieu = ISNULL(@MaPhongMoi, MaPhongChieu)
+        GioBatDau = @FinalGio,
+        MaPhongChieu = @FinalPhong
     WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim;
 
     PRINT N'Cập nhật suất chiếu thành công!';
@@ -1187,62 +1284,46 @@ GO
 
 -- Thủ tục Delete suất chiếu -- 
 CREATE OR ALTER PROCEDURE Delete_SuatChieu
-	@MaSuatChieu CHAR(7), 
-	@MaPhim CHAR(10)
+    @MaSuatChieu INT, 
+    @MaPhim INT
 AS
 BEGIN
-    -- Kiểm tra suất chiếu có tồn tại không --
-	IF NOT EXISTS(
-		SELECT 1
-		FROM SuatChieu
-		WHERE @MaSuatChieu = MaSuatChieu AND @MaPhim = MaPhim
-	)
-	BEGIN
-		RAISERROR('Lỗi: Không tìm thấy suất chiếu này.', 16,1);
-	END
-    -- Nếu suất chiếu tồn tại thì kiểm tra xem có vé nào đang đặt đối với suất chiếu này không
-	ELSE IF EXISTS(
-		SELECT 1
-		FROM Ve
-		WHERE @MaSuatChieu = Ve.MaSuatChieu AND @MaPhim = Ve.MaPhim
-	)
-	BEGIN
-		DECLARE @date DATE, 
-				@end_time TIME,		
-				@current_time TIME = CAST(GETDATE() AS TIME),
-				@current_date DATE  = CAST(GETDATE() AS DATE);
+    -- 1. Kiểm tra tồn tại
+    IF NOT EXISTS (SELECT 1 FROM SuatChieu WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim)
+    BEGIN
+        RAISERROR(N'Lỗi: Suất chiếu không tồn tại.', 16, 1);
+        RETURN;
+    END
 
-		SELECT @date= sc.NgayChieu, 
-			   @end_time = CAST(
-                    DATEADD(
-                        SECOND,
-                        DATEDIFF(SECOND, '00:00:00', p.ThoiLuong),
-                        CAST(sc.GioBatDau AS datetime)
-                    ) 
-                AS time)
-		FROM SuatChieu sc, Phim p
-		WHERE @MaSuatChieu = sc.MaSuatChieu AND @MaPhim = sc.MaPhim
-        -- Kiểm tra xem suất chiếu đã hết hạn chưa --
-		IF (@current_date > @date) OR (@current_date = @date AND @current_time > @end_time)
-			BEGIN
-				DELETE FROM Ve
-				WHERE @MaSuatChieu = Ve.MaSuatChieu AND @MaPhim = Ve.MaPhim
+    -- 2. Kiểm tra ràng buộc dữ liệu (Data Integrity)
+    -- Nếu đã có bất kỳ vé nào được tạo ra (dù là Tạm giữ, hay Đã hủy)
+    -- thì không xóa suất chiếu vì sẽ làm mất lịch sử giao dịch.
+    IF EXISTS (
+        SELECT 1 
+        FROM Ve 
+        WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim
+    )
+    BEGIN
+        -- Thay vì xóa, hãy hướng dẫn người dùng Update trạng thái
+        RAISERROR(N'Lỗi: Không thể xóa suất chiếu này vì đã phát sinh vé (bao gồm cả vé đã hủy).', 16, 1);
+        RETURN;
+    END
 
-				DELETE FROM SuatChieu
-				WHERE @MaSuatChieu = MaSuatChieu AND @MaPhim = MaPhim
-				PRINT 'Xóa suất chiếu thành công!';
-			END
-		ELSE
-			BEGIN
-				RAISERROR('Lỗi: Có vé đang đặt suất chiếu này.', 16,1);
-			END
-	END
-	ELSE
-	BEGIN
-		DELETE FROM SuatChieu
-		WHERE @MaSuatChieu = MaSuatChieu AND @MaPhim = MaPhim
-		PRINT N'Xóa suất chiếu thành công!';
-	END
+    -- 3. Thực hiện Xóa (Chỉ khi chưa có vé nào)
+    BEGIN TRY
+        BEGIN TRANSACTION;
+            
+            DELETE FROM SuatChieu
+            WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim;
+
+        COMMIT TRANSACTION;
+        PRINT N'Xóa suất chiếu thành công.';
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR(@ErrorMessage, 16, 1);
+    END CATCH
 END
 GO
 
@@ -1257,7 +1338,7 @@ BEGIN
     IF NOT UPDATE(TrangThai) RETURN;
 
     DECLARE @Adjustments TABLE (
-        MaTaiKhoan CHAR(12),
+        MaTaiKhoan INT,
         AdjustmentAmount DECIMAL(18, 2)
     );
 
@@ -1301,11 +1382,12 @@ GO
 
 CREATE TRIGGER trg_CheckTuoiXemPhim
 ON Ve
-AFTER INSERT, UPDATE
+INSTEAD OF INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- Check if any inserted ticket violates age restriction
     IF EXISTS (
         SELECT 1
         FROM inserted i
@@ -1320,10 +1402,16 @@ BEGIN
             DATEADD(YEAR, p.GioiHanDoTuoi, tk.NgaySinh) > sc.NgayChieu
     )
     BEGIN
-        RAISERROR('LỖI: Không thể thêm vé. Có ít nhất một khách hàng thành viên không đủ tuổi xem phim này. Giao dịch đã bị hủy.', 16, 1);
-        ROLLBACK TRANSACTION;
-        RETURN;
+        -- Use THROW to propagate error to the caller's TRY/CATCH
+        ;THROW 50001, N'LỖI: Không thể thêm vé. Có ít nhất một khách hàng thành viên không đủ tuổi xem phim này.', 1;
     END;
+
+    -- If age check passes, perform the actual insert
+    INSERT INTO Ve (MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+                    MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe)
+    SELECT MaGhe, TrangThai, GiaChuan, GiaSauUuDai, PhuThu,
+           MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe
+    FROM inserted;
 END
 GO
 
@@ -1470,7 +1558,7 @@ BEGIN
         RETURN N'Lỗi: Ngày bắt đầu không được lớn hơn ngày kết thúc!';
 
     DECLARE @KetQua NVARCHAR(MAX) = N'[';
-    DECLARE @MaPhim CHAR(10);
+    DECLARE @MaPhim INT;
     DECLARE @TuaDe NVARCHAR(50);
     DECLARE @DoanhThu DECIMAL(18,2);
     DECLARE @Rank INT = 0;
@@ -1494,7 +1582,7 @@ BEGIN
 
         SET @KetQua = @KetQua +
             N'{"XepHang":' + CAST(@Rank AS NVARCHAR) +
-            N',"MaPhim":"' + @MaPhim +
+            N',"MaPhim":"' + CAST(@MaPhim AS NVARCHAR) +
             N'","TuaDe":"' + @TuaDe +
             N'","DoanhThu":' + CAST(@DoanhThu AS NVARCHAR) + N'},';
 
@@ -1511,10 +1599,3 @@ BEGIN
     RETURN @KetQua;
 END;
 GO
-
-
-
-
-
-
-
