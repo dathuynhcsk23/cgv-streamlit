@@ -1,5 +1,6 @@
 ------------------------------------------------------------
--- MOCK DATA FOR ASSIGNMENT 2
+-- MOCK DATA FOR ASSIGNMENT 2 (FINAL VERSION)
+-- STATUS: CONSISTENT, COMPLETE & LOGICALLY SOUND
 ------------------------------------------------------------
 USE Movie;
 GO
@@ -12,17 +13,18 @@ GO
 INSERT INTO KhachHang (HoTen, LoaiKhachHang) VALUES
 (N'Nguyễn Văn An',    N'Thành viên'), -- 1
 (N'Trần Thị Bình',    N'Thành viên'), -- 2
-(N'Lê Minh Châu',     N'Thường'),     -- 3 (Guest)
+(N'Lê Minh Châu',     N'Thường'),     -- 3
 (N'Phạm Thị Dung',    N'Thành viên'), -- 4
-(N'Hoàng Văn Em',     N'Thường'),     -- 5 (Guest)
-(N'Võ Thị Phương',    N'Thành viên'), -- 6 (Our VVIP)
-(N'Đặng Văn Giang',   N'Thường'),     -- 7 (Guest)
+(N'Hoàng Văn Em',     N'Thường'),     -- 5
+(N'Võ Thị Phương',    N'Thành viên'), -- 6 (VVIP Whale)
+(N'Đặng Văn Giang',   N'Thường'),     -- 7
 (N'Bùi Thị Hà',       N'Thành viên'), -- 8
-(N'Đinh Văn Khoa',    N'Thường'),     -- 9 (Guest)
+(N'Đinh Văn Khoa',    N'Thường'),     -- 9
 (N'Lý Thị Lan',       N'Thành viên'); -- 10
 GO
 
--- 2. RAP CHIEU PHIM (5 rows - Added CGV04, CGV05)
+-- 2. RAP CHIEU PHIM (5 rows)
+-- CGV04 is Active (needs full data), CGV05 is Maintenance (needs physical data only)
 INSERT INTO RapChieuPhim (
     MaRap, TenRap, DiaChi_ChiTiet, TinhThanh, ToaDo,
     NgayKhaiTruong, ThoiGianMoCua, ThoiGianDongCua,
@@ -64,22 +66,20 @@ GO
 ------------------------------------------------------------
 
 -- 5. TAI KHOAN THANH VIEN (10 rows)
--- NOTE: TongChiTieuLuyKe here is calculated to match exactly the transactions we will insert later.
--- User 6 (Võ Thị Phương) is our VVIP whale with ~1.5M spending.
 INSERT INTO TaiKhoanThanhVien (TrangThaiHoatDong, TenDangNhap, CapDoTaiKhoan, TongChiTieuLuyKe, MaKhachHang, RapYeuThich, SoDienThoai, NgaySinh, GioiTinh, Email) VALUES
 (1, 'nguyenvanan',    N'Member',  70000,   1, N'CGV Landmark 81', '0901234567', '1990-05-15', N'Nam', 'nguyenvanan@gmail.com'),
 (1, 'tranthibinh',    N'VIP',     80000,   2, N'CGV Crescent Mall', '0902345678', '1988-08-22', N'Nữ', 'tranthibinh@gmail.com'),
 (1, 'leminhchau',     N'Member',  0,       3, N'CGV SC VivoCity', '0903456789', '1995-01-10', N'Nam', 'leminhchau@gmail.com'),
-(1, 'phamthidung',    N'Member',  0,       4, N'CGV Hùng Vương', '0904567890', '1995-03-10', N'Nữ', 'phamthidung@gmail.com'), -- User 4 will cancel trans
+(1, 'phamthidung',    N'Member',  0,       4, N'CGV Hùng Vương', '0904567890', '1995-03-10', N'Nữ', 'phamthidung@gmail.com'),
 (1, 'hoangvanem',     N'Member',  85000,   5, N'CGV Sư Vạn Hạnh', '0905678901', '1992-09-09', N'Nam', 'hoangvanem@gmail.com'),
-(1, 'vothiphuong',    N'VVIP',    1590000, 6, N'CGV Sư Vạn Hạnh', '0906789012', '1985-11-30', N'Nữ', 'vothiphuong@gmail.com'), -- WHALE USER
-(1, 'dangvangiang',   N'Member',  75000,   7, N'CGV Giga Mall', '0907890123', '1993-04-01', N'Nam', 'dangvangiang@gmail.com'),
-(1, 'buithiha',       N'VIP',     585000,  8, N'CGV Giga Mall', '0908901234', '1992-07-18', N'Nữ', 'buithiha@gmail.com'), -- Secondary VIP
+(1, 'vothiphuong',    N'VVIP',    1590000, 6, N'CGV Sư Vạn Hạnh', '0906789012', '1985-11-30', N'Nữ', 'vothiphuong@gmail.com'),
+(1, 'dangvangiang',   N'Member',  75000,   7, N'CGV Aeon Bình Tân', '0907890123', '1993-04-01', N'Nam', 'dangvangiang@gmail.com'), -- Changed favorite to CGV04
+(1, 'buithiha',       N'VIP',     585000,  8, N'CGV Giga Mall', '0908901234', '1992-07-18', N'Nữ', 'buithiha@gmail.com'),
 (1, 'dinhvankhoa',    N'Member',  90000,   9, N'CGV Aeon Tân Phú', '0909012345', '1991-02-20', N'Nam', 'dinhvankhoa@gmail.com'),
 (1, 'lythilan',       N'Member',  80000,   10,N'CGV Aeon Tân Phú', '0900123456', '1993-09-25', N'Nữ', 'lythilan@gmail.com');
 GO
 
--- 6. NHAN SU (10 rows)
+-- 6. NHAN SU (13 rows - Added Staff for CGV04)
 INSERT INTO NhanSu (CCCD, DiaChi, GioiTinh, NgaySinh, HoTen, NgayBatDauLamViec, MucLuongCoBan, LoaiHopDong, TrangThai, SoDienThoai, Email, MaRap) VALUES
 ('001', N'Q1', N'Nam', '1985-03-15', N'Trần Văn Quản Lý', '2018-05-01', 25000000, N'Chính thức', N'Đang làm', '0901111111', 'ql1@cgv.vn', 'CGV01'),
 ('002', N'Q3', N'Nữ', '1990-07-22', N'Lê Thị Khu Vực', '2019-08-15', 20000000, N'Chính thức', N'Đang làm', '0902222222', 'ql2@cgv.vn', 'CGV02'),
@@ -90,56 +90,69 @@ INSERT INTO NhanSu (CCCD, DiaChi, GioiTinh, NgaySinh, HoTen, NgayBatDauLamViec, 
 ('007', N'Q10', N'Nữ', '1996-12-05', N'Trần Thị Đồ Ăn', '2021-12-20', 8200000, N'Chính thức', N'Đang làm', '0907777777', 'nv4@cgv.vn', 'CGV02'),
 ('008', N'Q1', N'Nam', '1999-04-12', N'Nguyễn Văn Mới', '2023-03-01', 7800000, N'Thử việc', N'Đang làm', '0908888888', 'nv5@cgv.vn', 'CGV03'),
 ('009', N'Q5', N'Nữ', '1994-09-30', N'Lý Thị Kinh Nghiệm', '2020-11-05', 9500000, N'Chính thức', N'Đang làm', '0909999999', 'nv6@cgv.vn', 'CGV03'),
-('010', N'Q3', N'Nam', '1993-02-28', N'Đặng Văn Lâu', '2020-07-20', 9200000, N'Chính thức', N'Đang làm', '0900000000', 'nv7@cgv.vn', 'CGV03');
+('010', N'Q3', N'Nam', '1993-02-28', N'Đặng Văn Lâu', '2020-07-20', 9200000, N'Chính thức', N'Đang làm', '0900000000', 'nv7@cgv.vn', 'CGV03'),
+('011', N'Q5', N'Nữ', '1995-01-01', N'Nguyễn Phó Lý', '2023-01-01', 15000000, N'Chính thức', N'Đang làm', '0909998887', 'pl1@cgv.vn', 'CGV03'),
+-- STAFF FOR CGV04 (Operational)
+('012', N'BT', N'Nam', '1991-06-01', N'Lê Văn Bình Tân', '2021-01-01', 19000000, N'Chính thức', N'Đang làm', '0912341234', 'ql4@cgv.vn', 'CGV04'),
+('013', N'BT', N'Nữ', '1998-08-08', N'Trần Thị Vé Bình Tân', '2023-05-01', 8000000, N'Chính thức', N'Đang làm', '0912345678', 'nv8@cgv.vn', 'CGV04');
+-- CGV05 is Maintenance, so no active staff inserted for simplicity, or they are 'Nghỉ tạm'.
 GO
 
--- 7. QUAY GIAO DICH (5 rows)
+-- 7. QUAY GIAO DICH (7 rows - Added counters for 04/05)
 INSERT INTO QuayGiaoDich (MaQuay, MaRap, LoaiQuay) VALUES
 (1, 'CGV01', N'Vé'),
 (2, 'CGV01', N'Bắp nước'),
 (1, 'CGV02', N'Vé'),
 (2, 'CGV02', N'Tích hợp'),
-(1, 'CGV03', N'Vé');
+(1, 'CGV03', N'Vé'),
+(1, 'CGV04', N'Tích hợp'), -- Counter for Aeon Binh Tan
+(1, 'CGV05', N'Vé');       -- Counter for Vincom Dong Khoi (exists physically)
 GO
 
--- 8. PHONG CHIEU (6 rows)
+-- 8. PHONG CHIEU (10 rows - Added rooms for 04/05)
 INSERT INTO PhongChieu (MaPhong, MaRap, SucChua, TrangThai, LoaiPhong, TenHienThi) VALUES
 (1, 'CGV01', 100, 1, '2D',        N'Phòng 2D-1'),
 (2, 'CGV01', 80,  1, '3D',        N'Phòng 3D-1'),
 (1, 'CGV02', 90,  1, '2D',        N'Phòng 2D-2'),
 (2, 'CGV02', 70,  1, 'IMAX',      N'Phòng IMAX-2'),
 (1, 'CGV03', 100, 1, '2D',        N'Phòng 2D-3'),
-(2, 'CGV03', 60,  1, '4DX',       N'Phòng 4DX-3');
+(2, 'CGV03', 60,  1, '4DX',       N'Phòng 4DX-3'),
+-- CGV04 (Active)
+(1, 'CGV04', 120, 1, '2D',        N'Phòng 2D-4'),
+(2, 'CGV04', 120, 1, 'STARIUM',   N'Phòng STARIUM'),
+-- CGV05 (Maintenance)
+(1, 'CGV05', 40,  0, 'GOLDCLASS', N'Gold Class 1'),
+(2, 'CGV05', 80,  0, '2D',        N'Phòng 2D-5');
 GO
 
--- 9. GIAO DICH (12 rows - increased for coherence)
--- Adding extra transactions for User 6 (VVIP)
+-- 9. GIAO DICH (13 rows)
+-- NOTE: Trans 13 is moved to CGV04 to prove operation
 INSERT INTO GiaoDich (MaKhachHang, ThoiDiemBatDau, ThoiDiemKetThuc, KenhThanhToan, TrangThai, PhuongThuc) VALUES
 (1, '2025-11-20 10:00:00', '2025-11-20 10:02:00', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 1
-(2, '2025-11-20 14:00:00', '2025-11-20 14:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 2
+(2, '2025-11-20 14:00:00', '2025-11-20 14:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 2 (Offline)
 (3, '2025-11-20 19:00:00', '2025-11-20 19:01:30', N'Thẻ quốc tế',  N'Tạm giữ',       'Online'), -- 3
-(4, '2025-11-21 09:30:00', '2025-11-21 09:31:00', N'Tiền mặt',     N'Hủy',           'Offline'), -- 4
+(4, '2025-11-21 09:30:00', '2025-11-21 09:31:00', N'Tiền mặt',     N'Hủy',           'Offline'), -- 4 (Offline)
 (5, '2025-11-21 13:30:00', '2025-11-21 13:31:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 5
 (6, '2025-11-21 18:00:00', '2025-11-21 18:01:30', N'Thẻ nội địa',  N'Đã thanh toán', 'Online'), -- 6
-(7, '2025-11-22 10:15:00', '2025-11-22 10:16:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 7
+(7, '2025-11-22 10:15:00', '2025-11-22 10:16:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 7 (Offline)
 (8, '2025-11-22 15:00:00', '2025-11-22 15:01:30', N'Ví điện tử',   N'Đã thanh toán', 'Online'), -- 8
 (9, '2025-11-22 20:00:00', '2025-11-22 20:01:30', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'), -- 9
-(10, '2025-11-23 09:00:00', '2025-11-23 09:01:30', N'Tiền mặt',     N'Đã thanh toán', 'Offline'), -- 10
--- Extra High Value Trans for User 6
+(10, '2025-11-23 09:00:00', '2025-11-23 09:01:30', N'Tiền mặt',    N'Đã thanh toán', 'Offline'), -- 10 (Offline)
 (6, '2025-11-23 10:00:00', '2025-11-23 10:05:00', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'), -- 11
-(6, '2025-11-24 10:00:00', '2025-11-24 10:05:00', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'); -- 12
+(6, '2025-11-24 10:00:00', '2025-11-24 10:05:00', N'Thẻ quốc tế',  N'Đã thanh toán', 'Online'), -- 12
+(5, '2025-11-24 18:00:00', '2025-11-24 18:02:00', N'Tiền mặt',     N'Đã thanh toán', 'Offline'); -- 13 (Offline at CGV04)
 GO
 
--- 10. PHU TRO PHIM (>5 rows)
+-- 10. PHU TRO PHIM
 INSERT INTO Theloai_Phim (Ma_Phim, TheloaiPhim) VALUES (1, N'Viễn tưởng'), (2, N'Hành động'), (3, N'Giật gân'), (4, N'Tâm lý'), (5, N'Hành động'), (6, N'Âm nhạc');
-INSERT INTO DinhDangHoTro_Phim (Ma_Phim, DinhDangHoTro) VALUES (1, N'2D'), (1, N'IMAX'), (2, N'4DX'), (3, N'3D'), (4, N'2D'), (5, N'2D');
+INSERT INTO DinhDangHoTro_Phim (Ma_Phim, DinhDangHoTro) VALUES (1, N'2D'), (1, N'IMAX'), (2, N'4DX'), (3, N'3D'), (4, N'2D'), (5, N'2D'), (1, N'STARIUM'), (2, N'STARIUM');
 INSERT INTO DaoDien_Phim (Ma_Phim, DaoDien) VALUES (1, N'Director A'), (2, N'Director B'), (3, N'Director C'), (4, N'Director D'), (5, N'Director E');
 INSERT INTO DienVien_Phim (Ma_Phim, DienVien) VALUES (1, N'Actor A'), (2, N'Actor B'), (3, N'Actor C'), (4, N'Actor D'), (5, N'Actor E');
 
--- 11. COMBO COMP (11 rows)
+-- 11. COMBO COMP
 INSERT INTO Combo_ThanhPhan (Ma_combo, ThanhPhanCombo, SoLuong) VALUES (1,'Bap',1), (1,'Nuoc',1), (2,'Bap',2), (2,'Nuoc',2), (3,'Bap',1), (3,'Snack',2), (4,'Bap',2), (4,'Nuoc',1), (5,'Bap',3), (5,'Nuoc',2), (5,'Snack',2);
 
--- 12. DUOC DI KEM (5 rows)
+-- 12. DUOC DI KEM
 INSERT INTO DuocDiKem (Ma_Combo, Ma_Giaodich, SoLuong) VALUES (1, 1, 1), (2, 2, 1), (3, 5, 2), (4, 6, 1), (5, 8, 1);
 GO
 
@@ -147,7 +160,7 @@ GO
 -- LEVEL 2: Tables depending on Level 1
 ------------------------------------------------------------
 
--- 13. SUAT CHIEU (12 rows)
+-- 13. SUAT CHIEU (13 rows - Added showtimes for CGV04)
 INSERT INTO SuatChieu (MaPhim, MaRap, MaPhongChieu, NgayChieu, DinhDangChieu, NgonNgu, TrangThai, HinhThucDichThuat, GioBatDau) VALUES
 (1, 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '10:00:00'), -- 1
 (2, 'CGV01', 1, '2025-11-20', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '14:00:00'), -- 2
@@ -160,14 +173,21 @@ INSERT INTO SuatChieu (MaPhim, MaRap, MaPhongChieu, NgayChieu, DinhDangChieu, Ng
 (9, 'CGV03', 2, '2025-11-22', N'4DX',     N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '20:00:00'), -- 9
 (10, 'CGV01', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '09:00:00'), -- 10
 (1, 'CGV02', 1, '2025-11-23', N'2D',      N'Tiếng Anh',  N'Đã chiếu','PhuDe',     '11:00:00'), -- 11
-(6, 'CGV03', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '16:30:00'); -- 12
+(6, 'CGV03', 1, '2025-11-23', N'2D',      N'Tiếng Việt', N'Mở bán',  'LongTieng', '16:30:00'), -- 12
+-- CGV04 Showtimes (Active)
+(1, 'CGV04', 1, '2025-11-24', N'2D',      N'Tiếng Anh',  N'Mở bán',  'PhuDe',     '18:00:00'); -- 13
+-- No showtimes for CGV05 (Maintenance)
 GO
 
--- 14. GHE (9 rows)
+-- 14. GHE (15 rows - Added seats for 04/05)
 INSERT INTO Ghe (MaGhe, MaRap, MaPhongChieu, So, Hang, TrangThai, Loai) VALUES
 ('A01', 'CGV01', 1, 1, 'A', N'Hoạt động', 'Normal'), ('A02', 'CGV01', 1, 2, 'A', N'Hoạt động', 'Normal'), ('A03', 'CGV01', 1, 3, 'A', N'Hoạt động', 'VIP'),
 ('B01', 'CGV02', 1, 1, 'B', N'Hoạt động', 'Normal'), ('B02', 'CGV02', 1, 2, 'B', N'Hoạt động', 'Normal'), ('B03', 'CGV02', 1, 3, 'B', N'Hoạt động', 'VIP'),
-('C01', 'CGV03', 1, 1, 'C', N'Hoạt động', 'Normal'), ('C02', 'CGV03', 1, 2, 'C', N'Hoạt động', 'Normal'), ('C03', 'CGV03', 1, 3, 'C', N'Hoạt động', 'VIP');
+('C01', 'CGV03', 1, 1, 'C', N'Hoạt động', 'Normal'), ('C02', 'CGV03', 1, 2, 'C', N'Hoạt động', 'Normal'), ('C03', 'CGV03', 1, 3, 'C', N'Hoạt động', 'VIP'),
+-- CGV04 Seats
+('A01', 'CGV04', 1, 1, 'A', N'Hoạt động', 'Normal'), ('A02', 'CGV04', 1, 2, 'A', N'Hoạt động', 'Normal'), ('A03', 'CGV04', 1, 3, 'A', N'Hoạt động', 'VIP'),
+-- CGV05 Seats (Physical existence, but room 1 is closed/maintenance)
+('A01', 'CGV05', 1, 1, 'A', N'Bảo trì',   'Special'), ('A02', 'CGV05', 1, 2, 'A', N'Bảo trì',   'Special'), ('A03', 'CGV05', 1, 3, 'A', N'Bảo trì',   'Special');
 GO
 
 -- 15. THE THANH VIEN (10 rows)
@@ -192,7 +212,7 @@ INSERT INTO DiemThuong (SoLuong, TrangThai, MaGiaoDich, MaTaiKhoan, NgayGhiNhan,
 (45, N'Còn hiệu lực', 10, 10, '2025-11-23', '2026-11-23');
 GO
 
--- 17. MA UU DAI (5 rows - Added one more)
+-- 17. MA UU DAI (5 rows)
 INSERT INTO MaUuDai (GiaTri, TrangThai, DieuKienApDung, Loai, NguonPhatHanh, NgayPhatHanh, NgayBatDauHieuLuc, GioiHanSoLanSuDung, NgayHetHan, MaGiaoDich) VALUES
 (50000, N'Chưa dùng', 100000, 'So tien',  N'CGV App', '2025-10-01', '2025-10-01', 5, '2025-12-31', 1),
 (20,    N'Chưa dùng',  80000, 'Phan tram',N'Galaxy',  '2025-09-15', '2025-09-20', 3, '2025-12-31', 2),
@@ -201,13 +221,15 @@ INSERT INTO MaUuDai (GiaTri, TrangThai, DieuKienApDung, Loai, NguonPhatHanh, Nga
 (10,    N'Chưa dùng',  50000, 'Phan tram',N'Momo',    '2025-11-05', '2025-11-05', 1, '2025-12-31', 5);
 GO
 
--- 18. NGUOI QUAN LY (5 rows - Added 2)
+-- 18. NGUOI QUAN LY (7 rows - Added 12 for CGV04)
 INSERT INTO NguoiQuanLy (ID, CapBac, KhuVucPhuTrach, NgayBoNhiem) VALUES
 (1, N'Quản lý cấp cao',  N'Toàn quốc',        '2018-05-01'),
 (2, N'Quản lý khu vực', N'Khu vực TP.HCM',   '2019-08-15'),
 (3, N'Quản lý rạp',     N'Rạp CGV03',        '2020-02-01'),
 (4, N'Quản lý rạp',     N'Rạp CGV01',        '2022-01-01'),
-(5, N'Quản lý rạp',     N'Rạp CGV02',        '2022-06-01');
+(5, N'Quản lý rạp',     N'Rạp CGV02',        '2022-06-01'),
+(11, N'Quản lý rạp',    N'Rạp CGV03 (Phó)',  '2023-01-01'),
+(12, N'Quản lý rạp',    N'Rạp CGV04',        '2021-01-01');
 GO
 
 -- 19. NHAN SU CHAM CONG (6 rows)
@@ -228,71 +250,73 @@ GO
 -- LEVEL 3: Tables depending on Level 2
 ------------------------------------------------------------
 
--- 21. VE (12 rows - corresponding to transactions)
--- Prices set to exactly match TaiKhoanThanhVien.TongChiTieuLuyKe
+-- 21. VE (13 rows - Ticket 13 sold at CGV04)
 INSERT INTO Ve (MaGhe, TrangThai, PhuThu, GiaChuan, GiaSauUuDai, MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe) VALUES
-('A01', N'Đã xuất', 0,     80000, 70000, 1, 1, 1, '2025-11-20 10:00:00'), -- User 1: 70k
-('A02', N'Đã xuất', 10000, 90000, 80000, 2, 2, 2, '2025-11-20 14:00:00'), -- User 2: 80k
-('A03', N'Tạm giữ', 0,     75000, 75000, 3, 3, 3, '2025-11-20 19:00:00'), -- User 3: Unpaid
-('B01', N'Hoàn/Hủy',0,     85000, 85000, 4, 4, 4, '2025-11-21 09:30:00'), -- User 4: Cancelled
-('B02', N'Đã xuất', 0,     90000, 85000, 5, 5, 5, '2025-11-21 13:30:00'), -- User 5: 85k
-('B03', N'Đã xuất', 5000,  95000, 90000, 6, 6, 6, '2025-11-21 18:00:00'), -- User 6: 90k
-('C01', N'Đã xuất', 0,     80000, 75000, 7, 7, 7, '2025-11-22 10:15:00'), -- User 7: 75k
-('C02', N'Đã xuất', 0,     90000, 85000, 8, 8, 8, '2025-11-22 15:00:00'), -- User 8: 85k (Need 500k more for VIP status)
-('C03', N'Đã xuất', 0,     95000, 90000, 9, 9, 9, '2025-11-22 20:00:00'), -- User 9: 90k
-('A01', N'Đã xuất', 0,     80000, 80000, 10, 10, 10, '2025-11-23 09:00:00'), -- User 10: 80k
--- WHALE USER 6 Extra Tickets
-('B03', N'Đã xuất', 0,     500000, 500000, 11, 2, 2, '2025-11-23 10:00:00'), -- User 6: +500k
-('B03', N'Đã xuất', 0,     1000000, 1000000, 12, 2, 2, '2025-11-24 10:00:00'); -- User 6: +1M -> Total ~1.59M
+('A01', N'Đã xuất', 0,     80000, 70000, 1, 1, 1, '2025-11-20 10:00:00'),
+('A02', N'Đã xuất', 10000, 90000, 80000, 2, 2, 2, '2025-11-20 14:00:00'),
+('A03', N'Tạm giữ', 0,     75000, 75000, 3, 3, 3, '2025-11-20 19:00:00'),
+('B01', N'Hoàn/Hủy',0,     85000, 85000, 4, 4, 4, '2025-11-21 09:30:00'),
+('B02', N'Đã xuất', 0,     90000, 85000, 5, 5, 5, '2025-11-21 13:30:00'),
+('B03', N'Đã xuất', 5000,  95000, 90000, 6, 6, 6, '2025-11-21 18:00:00'),
+('C01', N'Đã xuất', 0,     80000, 75000, 7, 7, 7, '2025-11-22 10:15:00'),
+('C02', N'Đã xuất', 0,     90000, 85000, 8, 8, 8, '2025-11-22 15:00:00'),
+('C03', N'Đã xuất', 0,     95000, 90000, 9, 9, 9, '2025-11-22 20:00:00'),
+('A01', N'Đã xuất', 0,     80000, 80000, 10, 10, 10, '2025-11-23 09:00:00'),
+('B03', N'Đã xuất', 0,     500000, 500000, 11, 2, 2, '2025-11-23 10:00:00'),
+('B03', N'Đã xuất', 0,     1000000, 1000000, 12, 2, 2, '2025-11-24 10:00:00'),
+('C01', N'Đã xuất', 0,     70000, 70000, 13, 1, 13, '2025-11-24 18:00:00'); -- Sold at CGV04
 -- User 8 Extra Ticket logic to hit VIP
 INSERT INTO Ve (MaGhe, TrangThai, PhuThu, GiaChuan, GiaSauUuDai, MaGiaoDich, MaPhim, MaSuatChieu, ThoiDiemXuatVe) VALUES
-('C02', N'Đã xuất', 0, 500000, 500000, 8, 8, 8, '2025-11-22 15:01:00'); -- Added to Trans 8
+('C02', N'Đã xuất', 0, 500000, 500000, 8, 8, 8, '2025-11-22 15:01:00');
 GO
 
--- 22. GHE TRANG THAI (9 rows)
+-- 22. GHE TRANG THAI (10 rows - Added status for CGV04 ticket)
 INSERT INTO Ghe_DanhSachTrangThaiCuaGhe (MaSuatChieu, MaPhim, TrangThai, MaGhe) VALUES
 (1, 1, N'Trống', 'A01'), (1, 1, N'Đã bán', 'A02'), (2, 2, N'Tạm giữ', 'A03'),
 (4, 4, N'Trống', 'B01'), (5, 5, N'Đã bán', 'B02'), (6, 6, N'Trống', 'B03'),
-(7, 7, N'Đã bán', 'C01'), (8, 8, N'Tạm giữ', 'C02'), (9, 9, N'Trống', 'C03');
+(7, 7, N'Đã bán', 'C01'), (8, 8, N'Tạm giữ', 'C02'), (9, 9, N'Trống', 'C03'),
+(13, 1, N'Đã bán', 'C01'); -- CGV04 Ticket
 GO
 
--- 23. MA DOI TU DIEM (5 rows - Added 2)
+-- 23. MA DOI TU DIEM (5 rows)
 INSERT INTO MaDoiTuDiem (MaSo, MaTaiKhoan, MaDiemThuong) VALUES (1, 1, 1), (2, 2, 2), (4, 6, 6), (3, 3, 3), (5, 5, 5);
 GO
 
--- 24. MA THEO SU KIEN (5 rows - Added 2)
+-- 24. MA THEO SU KIEN (5 rows)
 INSERT INTO MaTheoSuKien (MaSo, TenSuKien) VALUES (1, N'Sự kiện Halloween'), (2, N'Sinh nhật Galaxy'), (4, N'Tuần lễ phim Việt'), (3, N'Khuyến mãi Mùa Hè'), (5, N'Black Friday');
 GO
 
--- 25. NHAN VIEN BAN VE (7 rows)
+-- 25. NHAN VIEN BAN VE (8 rows - Added seller for CGV04)
 INSERT INTO NhanVienBanVe (ID, VaiTro, MaCaLamViec, IDQuanLy) VALUES
 (4, N'Bán vé',     'CA000001', 1), (5, N'Đa năng',    'CA000002', 1), (6, N'Bán đồ ăn',  'CA000003', 2),
-(7, N'Bán vé',     'CA000004', 2), (8, N'Đa năng',    'CA000005', 3), (9, N'Bán đồ ăn',  'CA000006', 3), (10, N'Bán vé',     'CA000007', 3);
+(7, N'Bán vé',     'CA000004', 2), (8, N'Đa năng',    'CA000005', 3), (9, N'Bán đồ ăn',  'CA000006', 3), (10, N'Bán vé',     'CA000007', 3),
+(13, N'Bán vé',    'CA000008', 12); -- Seller at CGV04
 GO
 
--- 26. QUAN LY (5 rows - Fixed Hierarchy)
--- 1 (Cao) -> 2 (Khu Vuc) -> 3,4,5 (Rap)
+-- 26. QUAN LY (6 rows)
+-- Hierarchy: 12->2 (CGV04 -> Area)
 INSERT INTO QuanLy (IDQuanLy, IDQuanLyCapCao) VALUES
-(2, 1),
-(3, 2),
-(4, 2),
-(5, 2),
-(1, 1); -- Self-ref for top level or handle constraint logic.
--- NOTE: If constraint 'CHK_QuanLy_KhongTuQuanLy' exists, remove the (1,1) line.
--- Assuming Top Manager has no entry in this table or reports to null.
--- Let's remove (1,1) to be safe with your constraint.
-DELETE FROM QuanLy WHERE IDQuanLy = 1;
+(2, 1),  -- Area -> Top
+(3, 2),  -- Cinema 03 -> Area
+(4, 2),  -- Cinema 01 -> Area
+(5, 2),  -- Cinema 02 -> Area
+(11, 3), -- Assistant -> Cinema 03 Manager
+(12, 2); -- Cinema 04 -> Area
 GO
 
 ------------------------------------------------------------
 -- LEVEL 4: Tables depending on Level 3
 ------------------------------------------------------------
 
--- 27. OFF_LINE (5 rows - Added 1)
+-- 27. OFF_LINE (5 rows - Trans 13 processed by Staff 13 at CGV04)
 INSERT INTO Off_line (MaGiaoDich, MaQuay, MaRap, ID_NhanVien) VALUES
-(2, 1, 'CGV01', 4), (4, 1, 'CGV02', 6), (7, 2, 'CGV01', 5), (10, 1, 'CGV03', 8), (4, 2, 'CGV02', 7);
+(2, 1, 'CGV01', 4),
+(4, 1, 'CGV02', 6),
+(7, 2, 'CGV01', 5),
+(10, 1, 'CGV03', 8),
+(13, 1, 'CGV04', 13);
 GO
 
--- 28. DUOC TRUC (6 rows)
-INSERT INTO DuocTruc (ID_NhanVien, MaQuay, MaRap) VALUES (4, 1, 'CGV01'), (5, 2, 'CGV01'), (6, 1, 'CGV02'), (7, 2, 'CGV02'), (8, 1, 'CGV03'), (9, 1, 'CGV03');
+-- 28. DUOC TRUC (7 rows - Added staff 13)
+INSERT INTO DuocTruc (ID_NhanVien, MaQuay, MaRap) VALUES (4, 1, 'CGV01'), (5, 2, 'CGV01'), (6, 1, 'CGV02'), (7, 2, 'CGV02'), (8, 1, 'CGV03'), (9, 1, 'CGV03'), (13, 1, 'CGV04');
 GO
