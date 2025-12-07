@@ -383,8 +383,188 @@ def page_showtime_management():
                                 )
                                 st.rerun()
 
+            # =================================================================
+            # WORKFLOW 2 HELPER: Ticket Inspection Section
+            # Shows existing tickets for the selected showtime to explain
+            # why delete/update operations fail (Data Integrity Lock)
+            # =================================================================
+            st.divider()
+            st.subheader("🎫 Kiểm tra vé đã bán")
+            st.caption(
+                "Xem danh sách vé đã phát sinh cho suất chiếu để hiểu lý do không thể xóa/sửa."
+            )
+
+            if st.button("🔍 Hiển thị vé của suất chiếu này", key="btn_show_tickets"):
+                if selected_showtime and showtime_details is not None:
+                    ma_suat_chieu = int(selected_row["MaSuatChieu"])
+                    ma_phim = int(showtime_details["MaPhim"])
+
+                    # Query tickets for this showtime
+                    tickets_query = """
+                    SELECT 
+                        v.MaVe,
+                        v.MaGhe,
+                        v.TrangThai,
+                        v.GiaChuan,
+                        v.GiaSauUuDai,
+                        v.ThoiDiemXuatVe,
+                        gd.MaGiaoDich,
+                        gd.TrangThai AS TrangThaiGiaoDich,
+                        kh.HoTen AS TenKhachHang
+                    FROM Ve v
+                    JOIN GiaoDich gd ON v.MaGiaoDich = gd.MaGiaoDich
+                    JOIN KhachHang kh ON gd.MaKhachHang = kh.MaKhachHang
+                    WHERE v.MaSuatChieu = ? AND v.MaPhim = ?
+                    ORDER BY v.MaVe
+                    """
+                    tickets_df = execute_query(tickets_query, (ma_suat_chieu, ma_phim))
+
+                    # Store in session state for persistence
+                    st.session_state["showtime_tickets_result"] = tickets_df
+                    st.session_state["showtime_tickets_info"] = {
+                        "ma_suat_chieu": ma_suat_chieu,
+                        "ten_phim": selected_row["TuaDe"],
+                        "ten_rap": selected_row["TenRap"],
+                    }
+
+            # Display persisted ticket results
+            if "showtime_tickets_result" in st.session_state:
+                tickets_df = st.session_state["showtime_tickets_result"]
+                tickets_info = st.session_state.get("showtime_tickets_info", {})
+
+                if tickets_df is not None and not tickets_df.empty:
+                    st.warning(
+                        f"⚠️ Suất chiếu **{tickets_info.get('ma_suat_chieu', 'N/A')}** - "
+                        f"**{tickets_info.get('ten_phim', 'N/A')}** tại **{tickets_info.get('ten_rap', 'N/A')}** "
+                        f"đã có **{len(tickets_df)} vé** được phát sinh!"
+                    )
+
+                    # Format for display
+                    display_tickets = tickets_df.copy()
+                    if "ThoiDiemXuatVe" in display_tickets.columns:
+                        display_tickets["ThoiDiemXuatVe"] = pd.to_datetime(
+                            display_tickets["ThoiDiemXuatVe"]
+                        ).dt.strftime("%d/%m/%Y %H:%M")
+                    if "GiaChuan" in display_tickets.columns:
+                        display_tickets["GiaChuan"] = display_tickets["GiaChuan"].apply(
+                            format_currency
+                        )
+                    if "GiaSauUuDai" in display_tickets.columns:
+                        display_tickets["GiaSauUuDai"] = display_tickets[
+                            "GiaSauUuDai"
+                        ].apply(format_currency)
+
+                    display_tickets.columns = [
+                        "Mã Vé",
+                        "Mã Ghế",
+                        "Trạng Thái Vé",
+                        "Giá Chuẩn",
+                        "Giá Sau Ưu Đãi",
+                        "Thời Điểm Xuất Vé",
+                        "Mã GD",
+                        "Trạng Thái GD",
+                        "Khách Hàng",
+                    ]
+                    st.dataframe(
+                        display_tickets, use_container_width=True, hide_index=True
+                    )
+
+                    # Expandable explanation
+                    with st.expander("💡 Giải thích"):
+                        st.markdown("""
+                        **Tại sao không thể xóa suất chiếu này?**
+                        
+                        Stored procedure `Delete_SuatChieu` kiểm tra bảng `Ve` trước khi xóa:
+                        
+                        ```sql
+                        IF EXISTS (
+                            SELECT 1 FROM Ve 
+                            WHERE MaSuatChieu = @MaSuatChieu AND MaPhim = @MaPhim
+                        )
+                        BEGIN
+                            RAISERROR(N'Lỗi: Không thể xóa suất chiếu này vì đã phát sinh vé...', 16, 1);
+                            RETURN;
+                        END
+                        ```
+                        
+                        **Giải thích lý do:**
+                        - Bảo toàn lịch sử giao dịch (Data Integrity)
+                        - Không làm mất dữ liệu vé đã bán
+                        - Kể cả vé đã hủy cũng được lưu lại để kiểm tra
+                        """)
+
+                elif tickets_df is not None:
+                    st.success("✅ Suất chiếu này chưa có vé nào được phát sinh.")
+                    # Clear stored results when no tickets
+                    if "showtime_tickets_result" in st.session_state:
+                        del st.session_state["showtime_tickets_result"]
+                    if "showtime_tickets_info" in st.session_state:
+                        del st.session_state["showtime_tickets_info"]
+
     # TAB 2: Add New Showtime
     with tab2:
+        # =====================================================================
+        # WORKFLOW 1 HELPER: Movie Format Inspection Panel
+        # Shows which formats each movie supports to explain validation errors
+        # =====================================================================
+        st.subheader("📋 Thông tin định dạng phim")
+        st.caption(
+            "Mỗi phim chỉ hỗ trợ một số định dạng chiếu nhất định. Kiểm tra trước khi thêm suất chiếu."
+        )
+
+        # Query to get all movies with their supported formats
+        movie_formats_query = """
+        SELECT 
+            p.MaPhim,
+            p.TuaDe,
+            p.TrangThaiPhatHanh,
+            STRING_AGG(d.DinhDangHoTro, ', ') AS DinhDangHoTro
+        FROM Phim p
+        LEFT JOIN DinhDangHoTro_Phim d ON p.MaPhim = d.Ma_Phim
+        WHERE p.TrangThaiPhatHanh IN (N'Đang chiếu', N'Sắp chiếu')
+        GROUP BY p.MaPhim, p.TuaDe, p.TrangThaiPhatHanh
+        ORDER BY p.MaPhim
+        """
+        movie_formats_df = execute_query(movie_formats_query)
+
+        if movie_formats_df is not None and not movie_formats_df.empty:
+            # Highlight movies with no format support (will cause errors)
+            display_formats_df = movie_formats_df.copy()
+            display_formats_df["DinhDangHoTro"] = display_formats_df[
+                "DinhDangHoTro"
+            ].fillna("⚠️ Chưa có định dạng")
+            display_formats_df.columns = [
+                "Mã Phim",
+                "Tựa Đề",
+                "Trạng Thái",
+                "Định Dạng Hỗ Trợ",
+            ]
+            st.dataframe(display_formats_df, use_container_width=True, hide_index=True)
+
+            # Expandable note for demonstration
+            with st.expander("💡 Giải thích"):
+                st.markdown("""
+                **Mục tiêu:** Chứng minh phim phải hỗ trợ định dạng chiếu.
+                
+                **Các bước:**
+                1. Chọn **Phim**: `Bóng Tối Trên Sao Hỏa` (chỉ hỗ trợ **3D**)
+                2. Chọn **Rạp**: `CGV Landmark 81`
+                3. Chọn **Phòng**: `Phòng 2D-1` (phòng 2D hợp lệ)
+                4. Chọn **Định dạng**: `2D`
+                5. Nhấn **Thêm suất chiếu**
+                
+                **Kết quả mong đợi:** Lỗi "Phim... không hỗ trợ định dạng chiếu (2D)".
+                
+                **Giải thích:** Stored procedure `sp_Insert_SuatChieu` kiểm tra bảng `DinhDangHoTro_Phim`.
+                """)
+        else:
+            st.warning("Không có dữ liệu phim.")
+
+        st.divider()
+
+        # =====================================================================
+        # Original Add Showtime Section
+        # =====================================================================
         st.subheader("Thêm suất chiếu mới")
 
         # Display success message from session state (persists across rerun)
